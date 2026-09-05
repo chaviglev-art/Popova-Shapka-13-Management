@@ -211,7 +211,10 @@ function unitBalance(unitId, uptoPeriod) {
 }
 function firstPeriodFor(unitId) {
   if (DB.building.feesSince) return DB.building.feesSince;
-  const ps = DB.payments.map(p => p.period).sort();   // earliest period we have any record for
+  // earliest period we have any record for — for THIS unit; a unit with no
+  // payments yet shouldn't inherit some other unit's payment history just
+  // because it happens to start earlier.
+  const ps = DB.payments.filter(p => p.unitId === unitId).map(p => p.period).sort();
   return ps.length ? ps[0] : monthISO();
 }
 function buildingBalance() {

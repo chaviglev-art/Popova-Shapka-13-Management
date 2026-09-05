@@ -120,10 +120,23 @@ function finOverview() {
   </tbody></table></div></div>`;
 }
 function finMatrix() {
+  const curYear = new Date().getFullYear();
+  // Only the current and previous year are browsable here — anything older is
+  // folded into one "previous debts" column instead of an ever-growing list of
+  // year tabs. ui.matrixYear is clamped defensively in case it was left set to
+  // something older from before this limit existed.
+  ui.matrixYear = Math.min(curYear, Math.max(curYear - 1, ui.matrixYear));
   const y = ui.matrixYear; const cur = monthISO(); const colT = new Array(12).fill(0); let grand = 0;
-  const rows = DB.units.map(u => { let rt = 0; const cells = []; for (let m = 1; m <= 12; m++) { const per = y + '-' + String(m).padStart(2, '0'); const p = paidFor(u.id, per); rt += p; colT[m - 1] += p; const cls = per > cur ? 'future' : p >= u.fee ? 'paid' : p > 0 ? 'partial' : 'unpaid'; cells.push(`<td><span class="mcell ${cls} ${canManage() ? '' : 'ro'}" ${canManage() && cls !== 'future' ? `onclick="openPaymentModal('${u.id}','${per}')"` : ''} title="${fmtPeriod(per)}: ${fmtMoneyPlain(p)} / ${fmtMoneyPlain(u.fee)}">${cls === 'future' ? '·' : cls === 'unpaid' ? '✕' : fmtShort(p)}</span></td>`); } grand += rt; return `<tr class="${u.id === currentUser.unitId ? 'me' : ''}"><td><b>${unitLabel(u)}</b><div class="tiny subtle">${esc(u.owner)}</div></td>${cells.join('')}<td class="num"><b>${fmtShort(rt)}</b></td></tr>`; }).join('');
-  return `<div class="row wrap" style="margin-bottom:14px"><div class="segmented"><button onclick="ui.matrixYear--;render()">${icon('chevron_l')}</button><button class="active">${y}</button><button onclick="ui.matrixYear++;render()">${icon('chevron_r')}</button></div><div class="legend right"><span><i style="background:var(--good)"></i>${t('paid')}</span><span><i style="background:var(--warn)"></i>${t('partial')}</span><span><i style="background:var(--bad)"></i>${t('unpaid')}</span><span><i style="background:var(--border-2)"></i>${t('future')}</span></div></div>
-  <div class="card"><div class="table-wrap"><table class="matrix"><thead><tr><th>${t('unit')}</th>${t('months').map((m, i) => `<th style="${y + '-' + String(i + 1).padStart(2, '0') === cur ? 'color:var(--primary)' : ''}">${m}</th>`).join('')}<th class="num">${t('total')}</th></tr></thead><tbody>${rows}<tr style="background:var(--surface-2)"><td><b>${t('total_collected')}</b></td>${colT.map(v => `<td class="tabular"><b>${v ? fmtShort(v) : '—'}</b></td>`).join('')}<td class="num"><b>${fmtShort(grand)}</b></td></tr></tbody></table></div></div>
+  const priorCutoff = (curYear - 2) + '-12'; let priorTotal = 0;
+  const rows = DB.units.map(u => {
+    let rt = 0; const cells = [];
+    for (let m = 1; m <= 12; m++) { const per = y + '-' + String(m).padStart(2, '0'); const p = paidFor(u.id, per); rt += p; colT[m - 1] += p; const cls = per > cur ? 'future' : p >= u.fee ? 'paid' : p > 0 ? 'partial' : 'unpaid'; cells.push(`<td><span class="mcell ${cls} ${canManage() ? '' : 'ro'}" ${canManage() && cls !== 'future' ? `onclick="openPaymentModal('${u.id}','${per}')"` : ''} title="${fmtPeriod(per)}: ${fmtMoneyPlain(p)} / ${fmtMoneyPlain(u.fee)}">${cls === 'future' ? '·' : cls === 'unpaid' ? '✕' : fmtShort(p)}</span></td>`); }
+    const prior = unitBalance(u.id, priorCutoff); if (prior < 0) priorTotal += -prior;
+    grand += rt;
+    return `<tr class="${u.id === currentUser.unitId ? 'me' : ''}"><td><b>${unitLabel(u)}</b><div class="tiny subtle">${esc(u.owner)}</div></td><td class="num" ${prior < 0 ? 'style="color:var(--bad);font-weight:600"' : ''}>${prior < 0 ? fmtShort(-prior) : '—'}</td>${cells.join('')}<td class="num"><b>${fmtShort(rt)}</b></td></tr>`;
+  }).join('');
+  return `<div class="row wrap" style="margin-bottom:14px"><div class="segmented"><button class="${y === curYear - 1 ? 'active' : ''}" onclick="ui.matrixYear=${curYear - 1};render()">${curYear - 1}</button><button class="${y === curYear ? 'active' : ''}" onclick="ui.matrixYear=${curYear};render()">${curYear}</button></div><div class="legend right"><span><i style="background:var(--good)"></i>${t('paid')}</span><span><i style="background:var(--warn)"></i>${t('partial')}</span><span><i style="background:var(--bad)"></i>${t('unpaid')}</span><span><i style="background:var(--border-2)"></i>${t('future')}</span></div></div>
+  <div class="card"><div class="table-wrap"><table class="matrix"><thead><tr><th>${t('unit')}</th><th class="num">${t('prior_debts_col')}</th>${t('months').map((m, i) => `<th style="${y + '-' + String(i + 1).padStart(2, '0') === cur ? 'color:var(--primary)' : ''}">${m}</th>`).join('')}<th class="num">${t('total')}</th></tr></thead><tbody>${rows}<tr style="background:var(--surface-2)"><td><b>${t('total_collected')}</b></td><td class="num tabular">${priorTotal ? `<b style="color:var(--bad)">${fmtShort(priorTotal)}</b>` : '—'}</td>${colT.map(v => `<td class="tabular"><b>${v ? fmtShort(v) : '—'}</b></td>`).join('')}<td class="num"><b>${fmtShort(grand)}</b></td></tr></tbody></table></div></div>
   ${canManage() ? `<p class="help">${icon('info')} ${t('matrix_hint')}</p>` : ''}`;
 }
 function finStatement() {
