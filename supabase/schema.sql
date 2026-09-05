@@ -224,6 +224,26 @@ create policy units_read on units for select using (is_admin() or id = my_unit()
 drop policy if exists units_write on units;
 create policy units_write on units for all using (is_admin()) with check (is_admin());
 
+-- a resident may also update their OWN unit row (to edit tenant/phone/email/share_phone
+-- from their profile page) — the trigger below still locks down the fields that matter
+-- (fee, owner, num, type, floor, size) so they can't rewrite their own fee.
+drop policy if exists units_self_update on units;
+create policy units_self_update on units for update using (id = my_unit()) with check (id = my_unit());
+
+create or replace function lock_unit_admin_fields() returns trigger
+language plpgsql as $$
+begin
+  if not is_admin() then
+    new.num := old.num; new.type := old.type; new.floor := old.floor; new.size := old.size;
+    new.owner := old.owner; new.fee := old.fee; new.fee_since := old.fee_since;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists units_lock_admin_fields on units;
+create trigger units_lock_admin_fields before update on units
+  for each row execute function lock_unit_admin_fields();
+
 -- payments: admin all; resident can read only their own unit's payments
 drop policy if exists payments_read on payments;
 create policy payments_read on payments for select using (is_admin() or unit_id = my_unit());
@@ -299,6 +319,14 @@ create policy ballots_update on ballots for update using (is_admin() or unit_id 
 -- audit: admin only
 drop policy if exists audit_admin on audit;
 create policy audit_admin on audit for all using (is_admin()) with check (is_admin());
+
+-- public building name/address, for the login screen (shown before anyone signs in).
+-- Deliberately excludes banking details (iban/bank/beneficiary) and everything else.
+create or replace function public_building_info() returns table(name text, address text)
+language sql security definer stable as $$
+  select name, address from building where id = 1;
+$$;
+grant execute on function public_building_info() to anon, authenticated;
 
 -- ============================================================
 -- Realtime: broadcast row changes to all connected clients

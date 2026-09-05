@@ -48,10 +48,9 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 /* ---------- state ---------- */
-let currentUser = null;        // {username, role:'admin'|'resident', unitId, name}
+let currentUser = null;        // {id, role:'admin'|'resident', unitId, name} — id is the Supabase Auth user id
 let route = 'home';
 let ui = { finTab: 'overview', matrixYear: new Date().getFullYear(), calDate: new Date(), reqFilter: 'open', unitTab: 'all', settingsTab: 'building', notifOpen: false, sidebarOpen: false };
-const SESSION_KEY = 'ps13_session';
 
 /* ---------- theme ---------- */
 function applyTheme() {
@@ -85,38 +84,49 @@ function confirmDialog(msg, onYes) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); ui.notifOpen = false; } });
 
-/* ---------- auth ---------- */
-function tryLogin(u, p) {
-  u = (u || '').trim(); p = p || '';
-  if (u.toLowerCase() === DB.adminUser.username.toLowerCase() && verifyPassword(p, DB.adminUser.password)) {
-    if (!DB.adminUser.password.startsWith('v2$')) { DB.adminUser.password = hashPassword(p); saveData(); }
-    currentUser = { username: DB.adminUser.username, role: 'admin', unitId: null, name: DB.building.managerName || t('role_admin') };
-    return true;
-  }
-  const unit = DB.units.find(x => x.username && x.username.toLowerCase() === u.toLowerCase());
-  if (unit && verifyPassword(p, unit.password)) {
-    if (!unit.password.startsWith('v2$')) { unit.password = hashPassword(p); saveData(); }
-    currentUser = { username: unit.username, role: 'resident', unitId: unit.id, name: unit.owner };
-    return true;
-  }
-  return false;
-}
+/* ---------- auth (Supabase Auth — email + password, real server-side verification) ---------- */
 function isAdmin() { return currentUser && currentUser.role === 'admin'; }
 function myUnit() { return currentUser ? DB.units.find(u => u.id === currentUser.unitId) : null; }
-function mustChangePassword() { return isAdmin() ? DB.adminUser.mustChangePassword : (myUnit() && myUnit().mustChangePassword); }
-function doLogin() {
-  const ok = tryLogin($('#loginUser').value, $('#loginPass').value);
-  if (!ok) { $('#loginErr').hidden = false; $('#loginPass').select(); return; }
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ u: currentUser.username }));
-  audit('login'); saveData(); route = 'home'; render();
-  if (mustChangePassword()) openChangePassword(true);
+
+// Resolves the signed-in Supabase user into currentUser via their `profiles` row.
+// Returns true on success; on any mismatch (no profile, or profile points at a
+// unit that no longer exists) it signs the user back out and returns false.
+async function establishCurrentUser(authUser) {
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', authUser.id).single();
+  if (error || !profile) { await sb.auth.signOut(); return false; }
+  const ok = await loadRemoteData();
+  if (!ok) { await sb.auth.signOut(); return false; }
+  if (profile.is_admin) {
+    currentUser = { id: authUser.id, role: 'admin', unitId: null, name: DB.building.managerName || t('role_admin') };
+    return true;
+  }
+  const unit = DB.units.find(u => u.id === profile.unit_id);
+  if (!unit) { await sb.auth.signOut(); return false; }
+  currentUser = { id: authUser.id, role: 'resident', unitId: unit.id, name: unit.owner };
+  return true;
 }
-function doLogout() { audit('logout'); saveData(); currentUser = null; sessionStorage.removeItem(SESSION_KEY); ui.sidebarOpen = false; render(); }
-function restoreSession() {
-  try { const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); if (!s) return;
-    if (s.u === DB.adminUser.username) currentUser = { username: s.u, role: 'admin', unitId: null, name: DB.building.managerName || t('role_admin') };
-    else { const un = DB.units.find(x => x.username === s.u); if (un) currentUser = { username: un.username, role: 'resident', unitId: un.id, name: un.owner }; }
-  } catch (e) { }
+async function tryLogin(email, password) {
+  email = (email || '').trim(); password = password || '';
+  if (!email || !password) return false;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error || !data.user) return false;
+  return await establishCurrentUser(data.user);
+}
+async function doLogin() {
+  $('#loginBtn').disabled = true;
+  const ok = await tryLogin($('#loginUser').value, $('#loginPass').value);
+  $('#loginBtn').disabled = false;
+  if (!ok) { $('#loginErr').hidden = false; $('#loginPass').select(); return; }
+  subscribeRealtime();
+  audit('login'); saveData(); route = 'home'; render();
+}
+async function doLogout() { audit('logout'); saveData(); await sb.auth.signOut(); currentUser = null; DB_SNAPSHOT = null; DB = emptyData(); await fetchPublicBuildingName(); ui.sidebarOpen = false; render(); }
+async function restoreSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return false;
+  const ok = await establishCurrentUser(session.user);
+  if (ok) subscribeRealtime();
+  return ok;
 }
 
 /* ---------- navigation ---------- */
@@ -136,12 +146,16 @@ function navItems() {
   return items;
 }
 function go(r) { route = r; ui.sidebarOpen = false; ui.notifOpen = false; window.scrollTo({ top: 0 }); render(); }
-function activeVotesFor() { const today = todayISO(); return DB.votes.filter(v => !v.closed && v.deadline >= today && !(v.ballots && v.ballots[currentUser && currentUser.username])); }
+function activeVotesFor() { const today = todayISO(); return DB.votes.filter(v => !v.closed && v.deadline >= today && !(v.ballots && v.ballots[currentUser && currentUser.unitId])); }
 
-/* ---------- notifications ---------- */
+/* ---------- notifications ----------
+   "read since" is per-device UI state (like the theme choice), not shared
+   business data, so it lives in localStorage rather than the database. */
+function readMarksGet() { try { return JSON.parse(localStorage.getItem('ps13_read_marks') || '{}'); } catch (e) { return {}; } }
+function readMarksSet(key, val) { const m = readMarksGet(); m[key] = val; try { localStorage.setItem('ps13_read_marks', JSON.stringify(m)); } catch (e) { } }
 function notifications() {
   if (!currentUser) return [];
-  const seen = DB.readMarks[currentUser.username] || '1970-01-01';
+  const seen = readMarksGet()[currentUser.id] || '1970-01-01';
   const items = [];
   DB.news.forEach(n => { if (n.date > seen) items.push({ date: n.date, icon: 'news', cls: 'blue', text: t('n_news') + ': ' + n.title, route: 'news' }); });
   DB.votes.forEach(v => { if (!v.closed && v.created > seen) items.push({ date: v.created, icon: 'vote', cls: 'violet', text: t('n_vote') + ': ' + v.title, route: 'votes' }); });
@@ -151,7 +165,7 @@ function notifications() {
   else DB.requests.filter(r => r.unitId === currentUser.unitId).forEach(r => { (r.comments || []).forEach(c => { if (c.by === 'admin' && c.date > seen) items.push({ date: c.date, icon: 'inbox', cls: 'green', text: t('n_reply') + ': ' + r.subject, route: 'requests' }); }); });
   return items.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
 }
-function markAllRead() { DB.readMarks[currentUser.username] = todayISO(); saveData(); ui.notifOpen = false; render(); }
+function markAllRead() { readMarksSet(currentUser.id, todayISO()); ui.notifOpen = false; render(); }
 
 /* ---------- render shell ---------- */
 function render() {
@@ -162,7 +176,7 @@ function render() {
     if (it.section && it.section !== lastSection) { nav += `<div class="nav-label">${t(it.section)}</div>`; lastSection = it.section; }
     nav += `<div class="nav-item ${route === it.id ? 'active' : ''}" onclick="go('${it.id}')">${icon(it.icon)}<span>${it.label}</span>${it.count ? `<span class="count">${it.count}</span>` : ''}</div>`;
   });
-  const notifs = notifications(); const initials = (currentUser.name || currentUser.username).split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
+  const notifs = notifications(); const initials = currentUser.name.split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const bottom = [items[0], items[1], items[2], items[3], { id: '__more', icon: 'more', label: t('nav_more') }];
   root.innerHTML = `
@@ -210,54 +224,42 @@ function renderLogin() {
       <div class="field"><label>${t('username')}</label><input class="input" id="loginUser" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <div class="field"><label>${t('password')}</label><div class="pw-wrap"><input class="input" id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button class="pw-toggle" type="button" onclick="togglePw('loginPass',this)">${t('show_password')}</button></div></div>
       <div class="error" id="loginErr" hidden>${t('login_error')}</div>
-      <button class="btn btn-primary btn-block" style="margin-top:8px;padding:12px" onclick="doLogin()">${t('login')}</button>
-      <div style="text-align:center;margin-top:14px"><a href="#" onclick="openRecovery();return false" class="small">${t('forgot')}</a></div>
-      ${DB.migratedFromV1 && !DB.adminUser.recoveryCode ? `<div class="demo-box">${icon('info')} ${t('legacy_migrated')} ${t('welcome_admin_pw')}: <code>admin</code> / <code>${DEFAULT_ADMIN_PASSWORD}</code></div>` : (!DB.migratedFromV1 && DB.adminUser.mustChangePassword ? `<div class="demo-box"><b>${t('demo_creds')}</b> · <code>admin</code> / <code>${DEFAULT_ADMIN_PASSWORD}</code> · <code>apt1</code> / <code>pass123</code></div>` : '')}
+      <button class="btn btn-primary btn-block" id="loginBtn" style="margin-top:8px;padding:12px" onclick="doLogin()">${t('login')}</button>
+      <div style="text-align:center;margin-top:14px"><a href="#" onclick="toast(t('forgot_hint'));return false" class="small">${t('forgot')}</a></div>
       <p class="tiny subtle" style="margin-top:18px">${t('install_hint')}</p>
     </div></section>
   </div>`;
 }
 function togglePw(id, btn) { const i = $('#' + id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? t('show_password') : t('hide_password'); }
 
-/* ---------- password change & recovery ---------- */
-function openChangePassword(forced = false) {
-  openModal({ title: t('change_password'), body: `${forced ? `<div class="banner">${icon('shield')}<div>${t('must_change_pw')}</div></div>` : ''}
-    ${forced ? '' : `<div class="field"><label>${t('current_password')}</label><input class="input" type="password" id="cpOld"></div>`}
+/* ---------- password change ----------
+   Passwords now live in Supabase Auth, not in our own tables — changing one
+   just re-authenticates the already-signed-in user via the Supabase client.
+   Forgotten passwords are reset by the building manager from the Supabase
+   dashboard (see supabase/README.md), same as creating a login in the first
+   place — there is no self-service recovery code any more. */
+function openChangePassword() {
+  openModal({ title: t('change_password'), body: `
     <div class="field"><label>${t('new_password')}</label><input class="input" type="password" id="cpNew"></div>
     <div class="field"><label>${t('confirm_password')}</label><input class="input" type="password" id="cpConf"></div><div class="error" id="cpErr" hidden></div>`,
-    footer: `${forced ? '' : `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button>`}<button class="btn btn-primary" id="cpSave">${t('save')}</button>`,
-    onOpen: ov => { $('#cpSave', ov).onclick = () => {
+    footer: `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button><button class="btn btn-primary" id="cpSave">${t('save')}</button>`,
+    onOpen: ov => { $('#cpSave', ov).onclick = async () => {
       const nw = $('#cpNew').value, cf = $('#cpConf').value, err = $('#cpErr');
       const fail = m => { err.textContent = m; err.hidden = false; };
       if (nw.length < 6) return fail(t('pw_short')); if (nw !== cf) return fail(t('pw_mismatch'));
-      if (!forced) { const old = $('#cpOld').value; const stored = isAdmin() ? DB.adminUser.password : myUnit().password; if (!verifyPassword(old, stored)) return fail(t('pw_wrong')); }
-      if (isAdmin()) { DB.adminUser.password = hashPassword(nw, randomPassword(6)); DB.adminUser.mustChangePassword = false; } else { const u = myUnit(); u.password = hashPassword(nw, randomPassword(6)); u.mustChangePassword = false; }
+      const { error } = await sb.auth.updateUser({ password: nw });
+      if (error) return fail(error.message);
       audit('password_changed'); saveData(); closeModal(); toast(t('pw_changed'));
-      if (forced && isAdmin() && !DB.adminUser.recoveryCode) showRecoveryCode(true);
     }; }
   });
-}
-function showRecoveryCode(afterForced = false) {
-  const code = [randomPassword(4), randomPassword(4), randomPassword(4)].join('-').toUpperCase();
-  DB.adminUser.recoveryCode = hashPassword(code, 'rc'); audit('recovery_code_generated'); saveData();
-  openModal({ title: t('recovery_code'), body: `<p class="muted" style="margin-bottom:12px">${t('recovery_hint')}</p><div class="code" id="rcCode">${code}</div>`, footer: `<button class="btn btn-secondary" onclick="copyText('${code}')">${icon('copy')}${t('copy')}</button><button class="btn btn-primary" onclick="closeModal();render()">${t('done')}</button>` });
-}
-function openRecovery() {
-  openModal({ title: t('recovery_title'), body: `<div class="field"><label>${t('recovery_prompt')}</label><input class="input" id="rcIn" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters"></div><div class="field"><label>${t('new_password')}</label><input class="input" type="password" id="rcNew"></div><div class="error" id="rcErr" hidden></div>`,
-    footer: `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button><button class="btn btn-primary" id="rcGo">${t('save')}</button>`,
-    onOpen: ov => { $('#rcGo', ov).onclick = () => {
-      const err = $('#rcErr'); const fail = m => { err.textContent = m; err.hidden = false; };
-      if (!DB.adminUser.recoveryCode) return fail(t('recovery_none'));
-      const code = $('#rcIn').value.trim().toUpperCase(); const nw = $('#rcNew').value;
-      if (hashPassword(code, 'rc') !== DB.adminUser.recoveryCode) return fail(t('recovery_bad'));
-      if (nw.length < 6) return fail(t('pw_short'));
-      DB.adminUser.password = hashPassword(nw, randomPassword(6)); DB.adminUser.mustChangePassword = false; DB.adminUser.recoveryCode = null;
-      currentUser = { username: DB.adminUser.username, role: 'admin', unitId: null, name: DB.building.managerName || t('role_admin') };
-      audit('admin_password_recovered'); saveData(); closeModal(); toast(t('pw_changed')); render();
-    }; } });
 }
 function copyText(s) { navigator.clipboard && navigator.clipboard.writeText(s).then(() => toast(t('copied'))); }
 
 /* ---------- boot ---------- */
-applyTheme(); setLang(LANG); restoreSession(); render();
-if (currentUser && mustChangePassword()) openChangePassword(true);
+async function boot() {
+  applyTheme(); setLang(LANG);
+  await fetchPublicBuildingName();   // so the login screen shows the real building name
+  await restoreSession();            // resumes a previous Supabase session, if any
+  render();
+}
+boot();

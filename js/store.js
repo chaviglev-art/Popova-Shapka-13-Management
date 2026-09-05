@@ -1,181 +1,166 @@
 /* ============================================================
-   Store — data model, persistence, migration, security helpers
+   Store — data model, persistence (Supabase), realtime sync
    ============================================================ */
-const STORE_KEY = 'popova13_data';      // same key as v1 → existing data is migrated in place
-const SCHEMA_VERSION = 2;
-const DEFAULT_ADMIN_PASSWORD = 'Popova13';   // used only on first run / migration; must be changed at first login
 const BGN_PER_EUR = 1.95583;
 
-/* ---------- tiny synchronous SHA-256 (no dependencies) ---------- */
-function sha256(ascii) {
-  function rightRotate(v, a) { return (v >>> a) | (v << (32 - a)); }
-  const mathPow = Math.pow, maxWord = mathPow(2, 32), lengthProperty = 'length';
-  let result = '', words = [], asciiBitLength = ascii[lengthProperty] * 8;
-  let hash = sha256.h = sha256.h || [], k = sha256.k = sha256.k || [], primeCounter = k[lengthProperty];
-  const isComposite = {};
-  for (let candidate = 2; primeCounter < 64; candidate++) {
-    if (!isComposite[candidate]) {
-      for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-      hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
-      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
-    }
-  }
-  ascii += '\x80';
-  while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
-  for (let i = 0; i < ascii[lengthProperty]; i++) {
-    const j = ascii.charCodeAt(i);
-    if (j >> 8) return; // ASCII only (we pre-encode to UTF-8)
-    words[i >> 2] |= j << ((3 - i) % 4) * 8;
-  }
-  words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
-  words[words[lengthProperty]] = (asciiBitLength);
-  for (let j = 0; j < words[lengthProperty];) {
-    const w = words.slice(j, j += 16), oldHash = hash;
-    hash = hash.slice(0, 8);
-    for (let i = 0; i < 64; i++) {
-      const w15 = w[i - 15], w2 = w[i - 2];
-      const a = hash[0], e = hash[4];
-      const temp1 = hash[7] + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i]
-        + (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) | 0);
-      const temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
-      hash = [(temp1 + temp2) | 0].concat(hash);
-      hash[4] = (hash[4] + temp1) | 0;
-    }
-    for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-  }
-  for (let i = 0; i < 8; i++) for (let j = 3; j + 1; j--) {
-    const b = (hash[i] >> (j * 8)) & 255;
-    result += ((b < 16) ? 0 : '') + b.toString(16);
-  }
-  return result;
-}
-function hashPassword(pw, salt) {
-  const s = salt || 'ps13';
-  return 'v2$' + s + '$' + sha256(unescape(encodeURIComponent(s + ':' + pw)));
-}
-function verifyPassword(pw, stored) {
-  if (!stored) return false;
-  if (stored.startsWith('v2$')) { const salt = stored.split('$')[1]; return hashPassword(pw, salt) === stored; }
-  return pw === stored; // legacy plaintext (migrated on first successful login)
-}
-function randomPassword(len = 8) {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let out = ''; const arr = new Uint32Array(len); crypto.getRandomValues(arr);
-  for (let i = 0; i < len; i++) out += chars[arr[i] % chars.length];
-  return out;
-}
 function uid(prefix = 'x') { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function todayISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function monthISO(d = new Date()) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 
-/* ---------- default (demo) dataset ---------- */
-function defaultData() {
-  const sizes = [55, 62, 48, 70, 80, 55, 62, 48, 70, 80, 55, 62, 48, 70, 80];
-  const units = [];
-  for (let i = 1; i <= 15; i++) units.push({ id: 'apt' + i, num: String(i), type: 'apartment', floor: Math.floor((i - 1) / 3) + 1, size: sizes[i - 1], owner: (LANG === 'bg' ? 'Собственик ' : 'Owner ') + i, tenant: '', phone: '', email: '', sharePhone: false, fee: 40, username: 'apt' + i, password: hashPassword('pass123'), mustChangePassword: true });
-  units.push({ id: 'room1', num: 'R1', type: 'room', floor: 0, size: 25, owner: LANG === 'bg' ? 'Стая — наемател' : 'Room tenant', tenant: '', phone: '', email: '', sharePhone: false, fee: 25, username: 'room1', password: hashPassword('pass123'), mustChangePassword: true });
-  for (let i = 1; i <= 7; i++) units.push({ id: 'gar' + i, num: 'G' + i, type: 'garage', floor: -1, size: 14, owner: (LANG === 'bg' ? 'Собственик ' : 'Owner ') + i, tenant: '', phone: '', email: '', sharePhone: false, fee: 15, username: 'gar' + i, password: hashPassword('pass123'), mustChangePassword: true });
-
-  const now = new Date(); const payments = []; const expenses = [];
-  // Seed 8 months of demo history so the charts have shape
-  for (let m = 8; m >= 0; m--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - m, 1); const per = monthISO(d);
-    units.forEach((u, idx) => { const lag = [1, 5, 8, 11, 18].includes(idx); if (!(lag && m < 3) && !(m === 0 && idx % 4 === 1)) payments.push({ id: uid('p'), unitId: u.id, amount: u.fee, period: per, date: per + '-' + String(3 + (idx % 20)).padStart(2, '0'), note: '', method: idx % 3 === 0 ? 'cash' : 'bank' }); });
-    expenses.push({ id: uid('e'), date: per + '-10', amount: 120, category: 'cleaning', note: LANG === 'bg' ? 'Месечно почистване' : 'Monthly cleaning', vendor: '', url: '' });
-    expenses.push({ id: uid('e'), date: per + '-15', amount: 85, category: 'electricity', note: LANG === 'bg' ? 'Ток общи части' : 'Common-area electricity', vendor: '', url: '' });
-    if (m % 3 === 0) expenses.push({ id: uid('e'), date: per + '-20', amount: 240, category: 'elevator', note: LANG === 'bg' ? 'Сервиз асансьор' : 'Elevator service', vendor: '', url: '' });
-    if (m === 4) expenses.push({ id: uid('e'), date: per + '-22', amount: 690, category: 'repair', note: LANG === 'bg' ? 'Ремонт на покрива' : 'Roof repair', vendor: '', url: '' });
-  }
-  const nextMeeting = new Date(now.getFullYear(), now.getMonth() + 1, 12);
+/* ---------- empty shape (populated for real once Supabase answers) ---------- */
+function emptyData() {
   return {
-    schemaVersion: SCHEMA_VERSION,
-    building: { name: 'Попова шапка 13', address: 'ул. „Попова шапка“ 13, 1505 София', managerName: '', managerPhone: '', managerEmail: '', currency: 'EUR', showDual: true, defaultFee: 40, iban: '', bank: '', beneficiary: '', openingBalance: 1500, feesSince: '', banner: '' },
-    adminUser: { username: 'admin', password: hashPassword(DEFAULT_ADMIN_PASSWORD), mustChangePassword: true, recoveryCode: null },
-    units, payments, expenses,
-    news: [
-      { id: 'n1', title: LANG === 'bg' ? 'Добре дошли в новия портал' : 'Welcome to the new portal', body: LANG === 'bg' ? 'Тук ще намирате такси, новини, документи и можете да подавате сигнали. Приложението работи и на телефон.' : 'Here you will find fees, news, documents and can submit requests. The app also works on your phone.', date: todayISO(), pinned: true, banner: false },
-    ],
-    works: [
-      { id: 'w1', title: LANG === 'bg' ? 'Ремонт на асансьора' : 'Elevator overhaul', desc: LANG === 'bg' ? 'Подмяна на кабела и ревизия на механизма.' : 'Cable replacement and mechanism inspection.', status: 'in_progress', progress: 60, start: monthISO() + '-01', end: monthISO(new Date(now.getFullYear(), now.getMonth() + 1, 1)) + '-15' },
-      { id: 'w2', title: LANG === 'bg' ? 'Боядисване на стълбището' : 'Staircase repainting', desc: '', status: 'planned', progress: 0, start: '', end: '' },
-    ],
-    events: [
-      { id: 'e1', title: LANG === 'bg' ? 'Общо събрание' : 'General meeting', desc: LANG === 'bg' ? 'Годишно събрание на собствениците' : 'Annual owners meeting', date: monthISO(nextMeeting) + '-12', time: '18:30', type: 'meeting', location: LANG === 'bg' ? 'Входа, партер' : 'Entrance hall' },
-    ],
-    requests: [
-      { id: 's1', unitId: 'apt3', category: 'maintenance', priority: 'high', subject: LANG === 'bg' ? 'Теч в банята' : 'Leak in the bathroom', body: LANG === 'bg' ? 'От известно време има теч от тавана на банята.' : 'There has been a leak from the bathroom ceiling for a while.', date: todayISO(), status: 'in_progress', photo: '', internalNote: '', comments: [{ by: 'admin', date: todayISO(), text: LANG === 'bg' ? 'Изпратихме водопроводчик, ще се свърже с вас до 2 дни.' : 'A plumber has been dispatched and will contact you within 2 days.' }] },
-    ],
-    documents: [
-      { id: 'd1', name: LANG === 'bg' ? 'Правилник за вътрешния ред' : 'House rules', category: 'rules', url: '', note: '', date: todayISO() },
-      { id: 'd2', name: LANG === 'bg' ? 'Застраховка на сградата' : 'Building insurance', category: 'insurance', url: '', note: '', date: todayISO() },
-    ],
-    votes: [
-      { id: 'v1', title: LANG === 'bg' ? 'Да инсталираме ли видеонаблюдение във входа?' : 'Should we install CCTV at the entrance?', options: [LANG === 'bg' ? 'Да' : 'Yes', LANG === 'bg' ? 'Не' : 'No', LANG === 'bg' ? 'Въздържал се' : 'Abstain'], ballots: {}, deadline: monthISO(nextMeeting) + '-30', quorum: 50, closed: false, created: todayISO() },
-    ],
-    contacts: [
-      { id: 'c1', role: 'emergency', name: LANG === 'bg' ? 'Спешен телефон' : 'Emergency', phone: '112', note: '' },
-    ],
-    audit: [],
-    readMarks: {},
+    building: { name: '', address: '', managerName: '', managerPhone: '', managerEmail: '', currency: 'EUR', showDual: true, defaultFee: 40, iban: '', bank: '', beneficiary: '', openingBalance: 0, feesSince: '', banner: '' },
+    units: [], payments: [], expenses: [], news: [], works: [], events: [], requests: [], documents: [], votes: [], contacts: [], audit: [],
   };
 }
+let DB = emptyData();
+let DB_SNAPSHOT = null;   // last state known to be persisted — saveData() diffs against this
 
-/* ---------- migration from v1 (the original app) ---------- */
-const V1_TYPE = { 'Апартамент': 'apartment', 'Стая': 'room', 'Гараж': 'garage' };
-const V1_STATUS = { 'Нов': 'new', 'В процес': 'in_progress', 'Решен': 'resolved' };
-const V1_WORK = { 'Планирана': 'planned', 'В процес': 'in_progress', 'Завършена': 'done' };
-const V1_CAT = { 'Поддръжка': 'maintenance', 'Шум': 'noise', 'Предложение': 'suggestion', 'Въпрос': 'question', 'Друго': 'other' };
-const V1_EXP = { 'Ремонт': 'repair', 'Почистване': 'cleaning', 'Асансьор': 'elevator', 'Ел. Консумация': 'electricity', 'Водоснабдяване': 'water', 'Застраховка': 'insurance', 'Административни': 'admin', 'Друго': 'other' };
-const V1_DOC = { 'Правилник': 'rules', 'Застраховка': 'insurance', 'Договор': 'contract', 'Протокол': 'minutes', 'Друго': 'other' };
+/* ---------- column-name maps: js camelCase <-> Supabase snake_case ---------- */
+const TABLE_MAPS = {
+  building: [['name', 'name'], ['address', 'address'], ['managerName', 'manager_name'], ['managerPhone', 'manager_phone'], ['managerEmail', 'manager_email'], ['currency', 'currency'], ['showDual', 'show_dual'], ['defaultFee', 'default_fee'], ['iban', 'iban'], ['bank', 'bank'], ['beneficiary', 'beneficiary'], ['openingBalance', 'opening_balance'], ['feesSince', 'fees_since'], ['banner', 'banner']],
+  units: [['id', 'id'], ['num', 'num'], ['type', 'type'], ['floor', 'floor'], ['size', 'size'], ['owner', 'owner'], ['tenant', 'tenant'], ['phone', 'phone'], ['email', 'email'], ['sharePhone', 'share_phone'], ['fee', 'fee'], ['feeSince', 'fee_since']],
+  payments: [['id', 'id'], ['unitId', 'unit_id'], ['amount', 'amount'], ['period', 'period'], ['date', 'date'], ['note', 'note'], ['method', 'method']],
+  expenses: [['id', 'id'], ['date', 'date'], ['amount', 'amount'], ['category', 'category'], ['note', 'note'], ['vendor', 'vendor'], ['url', 'url']],
+  news: [['id', 'id'], ['title', 'title'], ['body', 'body'], ['date', 'date'], ['pinned', 'pinned'], ['banner', 'banner']],
+  works: [['id', 'id'], ['title', 'title'], ['desc', 'description'], ['status', 'status'], ['progress', 'progress'], ['start', 'start_date'], ['end', 'end_date']],
+  events: [['id', 'id'], ['title', 'title'], ['desc', 'description'], ['date', 'date'], ['time', 'time'], ['type', 'type'], ['location', 'location']],
+  requests: [['id', 'id'], ['unitId', 'unit_id'], ['category', 'category'], ['priority', 'priority'], ['subject', 'subject'], ['body', 'body'], ['date', 'date'], ['status', 'status'], ['photo', 'photo'], ['internalNote', 'internal_note']],
+  documents: [['id', 'id'], ['name', 'name'], ['category', 'category'], ['url', 'url'], ['note', 'note'], ['date', 'date']],
+  votes: [['id', 'id'], ['title', 'title'], ['options', 'options'], ['deadline', 'deadline'], ['quorum', 'quorum'], ['closed', 'closed'], ['created', 'created']],
+  contacts: [['id', 'id'], ['role', 'role'], ['name', 'name'], ['phone', 'phone'], ['note', 'note']],
+};
+function rowToJs(row, map) { const o = {}; map.forEach(([js, db]) => o[js] = row[db]); return o; }
+function jsToRow(obj, map) { const o = {}; map.forEach(([js, db]) => o[db] = obj[js]); return o; }
 
-function migrateV1(d) {
-  const fresh = defaultData();
-  const out = Object.assign({}, fresh, {
-    units: (d.units || []).map(u => ({ id: u.id, num: u.num, type: V1_TYPE[u.type] || 'apartment', floor: u.floor, size: u.size, owner: u.owner || '', tenant: u.tenant || '', phone: u.phone || '', email: '', sharePhone: false, fee: u.fee || 0, username: u.username, password: u.password && u.password.startsWith('v2$') ? u.password : hashPassword(u.password || 'pass123'), mustChangePassword: false })),
-    payments: (d.payments || []).map(p => Object.assign({ method: 'bank' }, p)),
-    expenses: (d.expenses || []).map(e => ({ id: e.id, date: e.date, amount: e.amount, category: V1_EXP[e.category] || 'other', note: e.note || '', vendor: '', url: '' })),
-    news: (d.news || []).map(n => ({ id: n.id, title: n.title, body: n.body, date: n.date, pinned: !!n.pinned, banner: false })),
-    works: (d.activities || []).map(a => ({ id: a.id, title: a.title, desc: a.desc || '', status: V1_WORK[a.status] || 'planned', progress: a.progress || 0, start: a.start || '', end: a.end || '' })),
-    events: (d.events || []).map(e => ({ id: e.id, title: e.title, desc: e.desc || '', date: e.date, time: e.time && e.time !== '—' ? e.time : '', type: 'other', location: '' })),
-    requests: (d.submissions || []).map(s => ({ id: s.id, unitId: s.unitId, category: V1_CAT[s.category] || 'other', priority: 'normal', subject: s.subject, body: s.body, date: s.date, status: V1_STATUS[s.status] || 'new', photo: '', internalNote: '', comments: s.reply ? [{ by: 'admin', date: s.date, text: s.reply }] : [] })),
-    documents: (d.documents || []).map(x => ({ id: x.id, name: x.name, category: V1_DOC[x.category] || 'other', url: x.url === '#' ? '' : (x.url || ''), note: x.note || '', date: x.date })),
-    votes: (d.votes || []).map(v => {
-      const ballots = {}; Object.keys(v.votes || {}).forEach(k => { if (!v.options.includes(k)) ballots[k] = v.votes[k]; });
-      return { id: v.id, title: v.title, options: v.options, ballots, deadline: v.deadline, quorum: 50, closed: false, created: v.deadline };
-    }),
-    contacts: fresh.contacts,
-    audit: [{ date: new Date().toISOString(), by: 'system', action: 'migrated_v1' }],
-  });
-  out.building.currency = 'BGN'; out.building.showDual = true; // legacy amounts were entered in leva
-  out.building.openingBalance = d.bankBalance || 0;
-  out.building.banner = d.announcement || '';
-  // Admin password is RESET on migration (owner lost it) and must be changed at first login
-  out.adminUser = { username: (d.adminUser && d.adminUser.username) || 'admin', password: hashPassword(DEFAULT_ADMIN_PASSWORD), mustChangePassword: true, recoveryCode: null };
-  out.migratedFromV1 = true;
-  return out;
+/* ---------- load everything from Supabase ---------- */
+async function fetchPublicBuildingName() {
+  try { const { data } = await sb.rpc('public_building_info'); if (data && data[0]) Object.assign(DB.building, { name: data[0].name, address: data[0].address }); } catch (e) { }
+}
+async function loadRemoteData() {
+  const [b, u, p, ex, nw, wk, ev, rq, rc, doc, vo, ba, ct, au] = await Promise.all([
+    sb.from('building').select('*').eq('id', 1).single(),
+    sb.from('units').select('*').order('num'),
+    sb.from('payments').select('*'),
+    sb.from('expenses').select('*').order('date', { ascending: false }),
+    sb.from('news').select('*').order('date', { ascending: false }),
+    sb.from('works').select('*'),
+    sb.from('events').select('*').order('date'),
+    sb.from('requests').select('*').order('date', { ascending: false }),
+    sb.from('request_comments').select('*').order('date'),
+    sb.from('documents').select('*').order('date', { ascending: false }),
+    sb.from('votes').select('*').order('created', { ascending: false }),
+    sb.from('ballots').select('*'),
+    sb.from('contacts').select('*'),
+    sb.from('audit').select('*').order('date', { ascending: false }).limit(300),
+  ]);
+  const firstError = [b, u, p, ex, nw, wk, ev, rq, rc, doc, vo, ba, ct, au].find(r => r.error);
+  if (firstError) { console.warn('load failed', firstError.error); return false; }
+  if (b.data) Object.assign(DB.building, rowToJs(b.data, TABLE_MAPS.building));
+  DB.units = (u.data || []).map(r => rowToJs(r, TABLE_MAPS.units));
+  DB.payments = (p.data || []).map(r => rowToJs(r, TABLE_MAPS.payments));
+  DB.expenses = (ex.data || []).map(r => rowToJs(r, TABLE_MAPS.expenses));
+  DB.news = (nw.data || []).map(r => rowToJs(r, TABLE_MAPS.news));
+  DB.works = (wk.data || []).map(r => rowToJs(r, TABLE_MAPS.works));
+  DB.events = (ev.data || []).map(r => rowToJs(r, TABLE_MAPS.events));
+  const commentsByReq = {};
+  (rc.data || []).forEach(c => { (commentsByReq[c.request_id] || (commentsByReq[c.request_id] = [])).push({ id: c.id, by: c.by, date: c.date, text: c.text, _synced: true }); });
+  DB.requests = (rq.data || []).map(r => Object.assign(rowToJs(r, TABLE_MAPS.requests), { comments: commentsByReq[r.id] || [] }));
+  DB.documents = (doc.data || []).map(r => rowToJs(r, TABLE_MAPS.documents));
+  const ballotsByVote = {};
+  (ba.data || []).forEach(row => { (ballotsByVote[row.vote_id] || (ballotsByVote[row.vote_id] = {}))[row.unit_id] = row.choice; });
+  DB.votes = (vo.data || []).map(r => Object.assign(rowToJs(r, TABLE_MAPS.votes), { ballots: ballotsByVote[r.id] || {} }));
+  DB.contacts = (ct.data || []).map(r => rowToJs(r, TABLE_MAPS.contacts));
+  DB.audit = (au.data || []).map(r => ({ date: r.date, by: r.by, action: r.action, detail: r.detail, _synced: true }));
+  DB_SNAPSHOT = JSON.parse(JSON.stringify(DB));
+  return true;
 }
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (!d.schemaVersion) return migrateV1(d);
-      // forward-compatible defaults
-      const fresh = defaultData();
-      ['contacts', 'works', 'requests', 'audit'].forEach(k => { if (!d[k]) d[k] = []; });
-      d.building = Object.assign({}, fresh.building, d.building || {});
-      d.readMarks = d.readMarks || {};
-      return d;
+/* ---------- save: diff current DB against the last-synced snapshot, push only what changed ---------- */
+async function syncCollection(table, map, prevArr, curArr) {
+  const prevIds = new Set((prevArr || []).map(x => x.id));
+  const curIds = new Set(curArr.map(x => x.id));
+  const toDelete = [...prevIds].filter(id => !curIds.has(id));
+  const toUpsert = curArr.filter(obj => { const prev = (prevArr || []).find(p => p.id === obj.id); return !prev || JSON.stringify(jsToRow(obj, map)) !== JSON.stringify(jsToRow(prev, map)); });
+  if (toDelete.length) { const { error } = await sb.from(table).delete().in('id', toDelete); if (error) console.warn(table, 'delete failed', error); }
+  if (toUpsert.length) { const { error } = await sb.from(table).upsert(toUpsert.map(o => jsToRow(o, map))); if (error) console.warn(table, 'upsert failed', error); }
+}
+async function syncRequestComments(curRequests) {
+  for (const r of curRequests) {
+    const toInsert = (r.comments || []).filter(c => !c._synced);
+    for (const c of toInsert) {
+      const { error } = await sb.from('request_comments').insert({ request_id: r.id, by: c.by, date: c.date, text: c.text });
+      if (!error) c._synced = true; else console.warn('comment insert failed', error);
     }
-  } catch (e) { console.warn('load failed', e); }
-  return defaultData();
+  }
 }
-let DB = loadData();
-function saveData() { try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch (e) { console.warn('save failed', e); } }
+async function syncBallots(curVotes, prevVotes) {
+  for (const v of curVotes) {
+    const prevV = (prevVotes || []).find(p => p.id === v.id);
+    const prevBallots = (prevV && prevV.ballots) || {};
+    const curBallots = v.ballots || {};
+    const changed = Object.keys(curBallots).filter(unitId => curBallots[unitId] !== prevBallots[unitId]);
+    if (changed.length) {
+      const { error } = await sb.from('ballots').upsert(changed.map(unitId => ({ vote_id: v.id, unit_id: unitId, choice: curBallots[unitId] })), { onConflict: 'vote_id,unit_id' });
+      if (error) console.warn('ballot upsert failed', error);
+    }
+  }
+}
+async function syncAudit() {
+  const toInsert = DB.audit.filter(a => !a._synced);
+  if (!toInsert.length) return;
+  const { error } = await sb.from('audit').insert(toInsert.map(a => ({ date: a.date, by: a.by, action: a.action, detail: a.detail })));
+  if (!error) toInsert.forEach(a => a._synced = true); else console.warn('audit insert failed', error);
+}
+async function syncBuilding() {
+  const prev = DB_SNAPSHOT && DB_SNAPSHOT.building;
+  if (prev && JSON.stringify(jsToRow(DB.building, TABLE_MAPS.building)) === JSON.stringify(jsToRow(prev, TABLE_MAPS.building))) return;
+  const { error } = await sb.from('building').update(jsToRow(DB.building, TABLE_MAPS.building)).eq('id', 1);
+  if (error) console.warn('building update failed', error);
+}
+async function saveData() {
+  if (!DB_SNAPSHOT) return; // not logged in / not loaded yet — nothing to diff against
+  try {
+    const s = DB_SNAPSHOT;
+    await Promise.all([
+      syncCollection('units', TABLE_MAPS.units, s.units, DB.units),
+      syncCollection('payments', TABLE_MAPS.payments, s.payments, DB.payments),
+      syncCollection('expenses', TABLE_MAPS.expenses, s.expenses, DB.expenses),
+      syncCollection('news', TABLE_MAPS.news, s.news, DB.news),
+      syncCollection('works', TABLE_MAPS.works, s.works, DB.works),
+      syncCollection('events', TABLE_MAPS.events, s.events, DB.events),
+      syncCollection('requests', TABLE_MAPS.requests, s.requests, DB.requests),
+      syncCollection('documents', TABLE_MAPS.documents, s.documents, DB.documents),
+      syncCollection('votes', TABLE_MAPS.votes, s.votes, DB.votes),
+      syncCollection('contacts', TABLE_MAPS.contacts, s.contacts, DB.contacts),
+      syncRequestComments(DB.requests),
+      syncBallots(DB.votes, s.votes),
+      syncAudit(),
+      syncBuilding(),
+    ]);
+    DB_SNAPSHOT = JSON.parse(JSON.stringify(DB));
+  } catch (e) {
+    console.warn('save failed', e);
+    if (typeof toast === 'function') toast(t('sync_error'), 'err');
+  }
+}
 function audit(action, detail) {
-  DB.audit.unshift({ date: new Date().toISOString(), by: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.username : 'system', action, detail: detail || '' });
+  const by = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'system';
+  DB.audit.unshift({ date: new Date().toISOString(), by, action, detail: detail || '' });
   if (DB.audit.length > 300) DB.audit.length = 300;
+}
+
+/* ---------- realtime: any change from anyone re-pulls everything and re-renders ---------- */
+let REALTIME_TIMER = null;
+function subscribeRealtime() {
+  const tables = ['building', 'units', 'payments', 'expenses', 'news', 'works', 'events', 'requests', 'request_comments', 'documents', 'votes', 'ballots', 'contacts'];
+  const channel = sb.channel('ps13-live');
+  tables.forEach(tbl => channel.on('postgres_changes', { event: '*', schema: 'public', table: tbl }, () => {
+    clearTimeout(REALTIME_TIMER);
+    REALTIME_TIMER = setTimeout(async () => { await loadRemoteData(); if (typeof render === 'function') render(); }, 500);
+  }));
+  channel.subscribe();
 }
 
 /* ---------- money & date formatting ---------- */

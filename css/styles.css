@@ -253,3 +253,9 @@ tr.me td { background: var(--primary-soft); }
 .list-item > svg, .req > svg { width: 18px; height: 18px; flex: none; }
 .segmented button svg { width: 16px; height: 16px; }
 .segmented button { display: inline-flex; align-items: center; }
+
+/* ---------- boot loading (before Supabase session/data resolve) ---------- */
+.boot-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--text-2); }
+.boot-loading img { width: 48px; height: 48px; opacity: .85; animation: boot-pulse 1.4s ease-in-out infinite; }
+.boot-loading p { font-size: .85rem; }
+@keyframes boot-pulse { 0%, 100% { opacity: .5; transform: scale(.96); } 50% { opacity: 1; transform: scale(1); } }

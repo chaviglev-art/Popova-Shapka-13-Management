@@ -5,9 +5,11 @@ const I18N = {
   en: {
     // generic
     app_name: 'Popova Shapka 13', app_sub: 'Building community portal', city: 'Sofia · Reduta',
-    login: 'Sign in', logout: 'Sign out', username: 'Username', password: 'Password',
-    forgot: 'Forgot password?', login_error: 'Wrong username or password.',
-    login_hint: 'Use the username and password given to you by the building manager.',
+    login: 'Sign in', logout: 'Sign out', username: 'Email', password: 'Password',
+    forgot: 'Forgot password?', login_error: 'Wrong email or password.',
+    login_hint: 'Use the email and password given to you by the building manager.',
+    forgot_hint: 'Contact your building manager to reset your password.',
+    sync_error: 'Could not sync — check your connection.',
     welcome_back: 'Welcome back', login_tagline: 'Everything about our building, in one place.',
     login_feat1: 'Fees & transparent finances', login_feat2: 'Requests answered in the app', login_feat3: 'Votes, meetings & documents',
     save: 'Save', cancel: 'Cancel', close: 'Close', delete: 'Delete', edit: 'Edit', add: 'Add', search: 'Search…',
@@ -103,7 +105,7 @@ const I18N = {
     generate_recovery: 'Generate new recovery code', recovery_prompt: 'Enter your recovery code', recovery_bad: 'Invalid recovery code.',
     recovery_none: 'No recovery code was set up. Ask the building manager.', recovery_title: 'Reset admin password',
     export_json: 'Download backup (JSON)', import_json: 'Restore from backup', import_ok: 'Backup restored.', import_bad: 'Invalid backup file.',
-    export_csv: 'Export payments (CSV)', reset_demo: 'Load demo data', danger_zone: 'Danger zone', storage_note: 'Data is stored in this browser. Download a backup regularly.',
+    export_csv: 'Export payments (CSV)', storage_note: 'Data is stored live in the shared database. Download a backup occasionally for your own records.',
     audit_empty: 'No activity yet.',
     // profile
     profile_title: 'My profile', profile_sub: 'Your unit, contact details and preferences.', my_unit: 'My unit', preferences: 'Preferences',
@@ -118,13 +120,17 @@ const I18N = {
     demo_creds: 'Demo access', install_hint: 'Tip: add this page to your phone home screen for an app-like experience.',
     show_password: 'Show', hide_password: 'Hide', welcome_admin_pw: 'Temporary admin password',
     fees_since: 'Fees charged since', fees_since_hint: 'Balances are calculated from this month. Leave empty to start from the earliest recorded payment.',
+    unit_login_hint: 'This only creates the unit record. To give the owner a login, create their account in the Supabase dashboard (see supabase/README.md).',
+    login_access_note: 'Logins are managed in the Supabase dashboard, not here — see supabase/README.md.',
   },
 
   bg: {
     app_name: 'Попова шапка 13', app_sub: 'Портал на етажната собственост', city: 'София · Редута',
-    login: 'Вход', logout: 'Изход', username: 'Потребител', password: 'Парола',
-    forgot: 'Забравена парола?', login_error: 'Грешно потребителско име или парола.',
-    login_hint: 'Използвайте потребителското име и паролата, дадени ви от домоуправителя.',
+    login: 'Вход', logout: 'Изход', username: 'Имейл', password: 'Парола',
+    forgot: 'Забравена парола?', login_error: 'Грешен имейл или парола.',
+    login_hint: 'Използвайте имейла и паролата, дадени ви от домоуправителя.',
+    forgot_hint: 'Свържете се с домоуправителя, за да смени паролата ви.',
+    sync_error: 'Неуспешна синхронизация — проверете връзката.',
     welcome_back: 'Добре дошли', login_tagline: 'Всичко за нашата сграда — на едно място.',
     login_feat1: 'Такси и прозрачни финанси', login_feat2: 'Сигнали с отговор в приложението', login_feat3: 'Гласувания, събрания и документи',
     save: 'Запази', cancel: 'Отказ', close: 'Затвори', delete: 'Изтрий', edit: 'Редактирай', add: 'Добави', search: 'Търсене…',
@@ -208,7 +214,7 @@ const I18N = {
     generate_recovery: 'Генерирай нов код за възстановяване', recovery_prompt: 'Въведете кода за възстановяване', recovery_bad: 'Невалиден код.',
     recovery_none: 'Няма настроен код за възстановяване. Обърнете се към домоуправителя.', recovery_title: 'Нова админ парола',
     export_json: 'Изтегли резервно копие (JSON)', import_json: 'Възстанови от копие', import_ok: 'Копието е възстановено.', import_bad: 'Невалиден файл.',
-    export_csv: 'Експорт на плащанията (CSV)', reset_demo: 'Зареди демо данни', danger_zone: 'Опасна зона', storage_note: 'Данните се пазят в този браузър. Изтегляйте резервно копие редовно.',
+    export_csv: 'Експорт на плащанията (CSV)', storage_note: 'Данните се пазят на живо в общата база данни. Изтегляйте резервно копие от време на време за архив.',
     audit_empty: 'Все още няма действия.',
     profile_title: 'Моят профил', profile_sub: 'Вашият обект, контакти и предпочитания.', my_unit: 'Моят обект', preferences: 'Предпочитания',
     building_health: 'Състояние на сградата', last_12: 'Последните 12 месеца', see_all: 'Виж всички', new_label: 'Ново',
@@ -221,6 +227,8 @@ const I18N = {
     demo_creds: 'Демо достъп', install_hint: 'Съвет: добавете страницата на началния екран на телефона си за усещане като приложение.',
     show_password: 'Покажи', hide_password: 'Скрий', welcome_admin_pw: 'Временна админ парола',
     fees_since: 'Такси се начисляват от', fees_since_hint: 'Балансите се изчисляват от този месец. Оставете празно, за да започне от най-ранното записано плащане.',
+    unit_login_hint: 'Това само създава обекта. За да дадете достъп на собственика, създайте акаунта му от Supabase (вижте supabase/README.md).',
+    login_access_note: 'Достъпите се управляват от Supabase, не оттук — вижте supabase/README.md.',
   }
 };
 
