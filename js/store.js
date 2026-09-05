@@ -69,7 +69,9 @@ async function loadRemoteData() {
   // sees their own row (RLS) — harmless, this is never shown to residents.
   DB.profiles = (pr.data || []).map(r => ({ id: r.id, unitId: r.unit_id, isAdmin: r.is_admin, displayName: r.display_name }));
   if (b.data) Object.assign(DB.building, rowToJs(b.data, TABLE_MAPS.building));
-  DB.units = (u.data || []).map(r => rowToJs(r, TABLE_MAPS.units));
+  // Postgres sorted `num` as text ("1","10","11",...,"2",...) — re-sort naturally so
+  // "2" comes before "10" everywhere units are listed (dropdowns, statements, etc.).
+  DB.units = (u.data || []).map(r => rowToJs(r, TABLE_MAPS.units)).sort((a, b) => naturalUnitCompare(a.num, b.num));
   DB.payments = (p.data || []).map(r => rowToJs(r, TABLE_MAPS.payments));
   DB.expenses = (ex.data || []).map(r => rowToJs(r, TABLE_MAPS.expenses));
   DB.news = (nw.data || []).map(r => rowToJs(r, TABLE_MAPS.news));

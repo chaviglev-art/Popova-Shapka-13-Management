@@ -209,10 +209,16 @@ tr.me td { background: var(--primary-soft); }
 .date-badge { width: 52px; text-align: center; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 0; flex: none; } .date-badge b { display: block; font-size: 1.25rem; line-height: 1; } .date-badge small { font-size: .66rem; text-transform: uppercase; color: var(--text-3); font-weight: 700; }
 
 /* units */
+.floor-group { margin-bottom: 22px; } .floor-group:last-child { margin-bottom: 0; }
+.floor-label { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); margin: 0 0 10px 2px; }
 .unit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 .unit-card { padding: 16px; cursor: pointer; transition: transform .12s, box-shadow .12s; position: relative; } .unit-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.unit-card .num { font-family: var(--display); font-size: 1.5rem; font-weight: 600; } .unit-card .st { position: absolute; top: 12px; right: 12px; }
-.unit-card .icn { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); margin-bottom: 10px; } .unit-card .icn svg { width: 18px; height: 18px; }
+.unit-card .st { position: absolute; top: 12px; right: 12px; }
+.unit-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.unit-card .icn { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); flex: none; } .unit-card .icn svg { width: 18px; height: 18px; }
+.num-badge { font-family: var(--display); font-weight: 700; font-size: 1.05rem; padding: 4px 15px; border-radius: 999px; line-height: 1.4; background: var(--surface-2); color: var(--text); }
+.icn.blue, .num-badge.blue { background: var(--info-soft); color: var(--info); } .icn.amber, .num-badge.amber { background: var(--warn-soft); color: var(--warn); }
+.icn.violet, .num-badge.violet { background: #efeafc; color: #5b3fc9; } [data-theme="dark"] .icn.violet, [data-theme="dark"] .num-badge.violet { background: #2a2350; color: #b1a3f4; }
 
 /* directory */
 .person { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); } .person:last-child { border: 0; }

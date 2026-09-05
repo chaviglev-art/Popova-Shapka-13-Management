@@ -16,6 +16,15 @@ const kpi = (ic, cls, label, value, sub = '', accent = false) => `<div class="ca
 const bannerHtml = () => DB.building.banner ? `<div class="banner">${icon('alert')}<div><b>${t('important')}:</b> ${esc(DB.building.banner)}</div></div>` : '';
 const selectOpts = (arr, prefix, cur) => arr.map(k => `<option value="${k}" ${k === cur ? 'selected' : ''}>${t(prefix + k)}</option>`).join('');
 function greeting() { const h = new Date().getHours(); return t(h < 12 ? 'good_morning' : h < 18 ? 'good_afternoon' : 'good_evening'); }
+const floorLabel = f => f == -1 ? t('garages') : f == 0 ? t('rooms') + ' / 0' : t('floor') + ' ' + f;
+const unitAccent = u => u.type === 'garage' ? 'violet' : u.type === 'room' ? 'amber' : 'blue';
+// "1" < "2" < ... < "15" instead of the string-sort order Postgres gives us ("1","10","11",...,"2",...);
+// also handles a letter prefix (G1, R1) by comparing that first, then the numeric part.
+function naturalUnitCompare(a, b) {
+  const pa = String(a).match(/^(\D*)(\d+)/) || [, String(a), '0'];
+  const pb = String(b).match(/^(\D*)(\d+)/) || [, String(b), '0'];
+  return pa[1] !== pb[1] ? pa[1].localeCompare(pb[1]) : parseInt(pa[2], 10) - parseInt(pb[2], 10);
+}
 function statusBadge(st, kind = 'req') { const key = (kind === 'work' ? 'w_' : 'st_') + st; return `<span class="badge ${ST_CLS[st] || 'b-neutral'}">${t(key)}</span>`; }
 function payStatus(u, period) { const p = paidFor(u.id, period); return p >= u.fee ? 'paid' : p > 0 ? 'partial' : 'unpaid'; }
 function payBadge(s) { return `<span class="badge ${s === 'paid' ? 'b-good' : s === 'partial' ? 'b-warn' : 'b-bad'}">${icon(s === 'paid' ? 'check' : s === 'partial' ? 'clock' : 'alert')}${t(s)}</span>`; }
@@ -272,8 +281,7 @@ function openDocModal(id) {
 
 /* ================= DIRECTORY ================= */
 PAGES.directory = () => {
-  const floors = {}; DB.units.forEach(u => { (floors[u.floor] = floors[u.floor] || []).push(u); });
-  const floorLabel = f => f == -1 ? t('garages') : f == 0 ? t('rooms') + ' / 0' : t('floor') + ' ' + f;
+  const floors = {}; DB.units.slice().sort((a, b) => naturalUnitCompare(a.num, b.num)).forEach(u => { (floors[u.floor] = floors[u.floor] || []).push(u); });
   const ctIcon = { manager: 'user', elevator: 'building', plumber: 'wrench', electrician: 'sparkle', cleaning: 'sparkle', emergency: 'alert', other: 'phone' };
   return head(t('dir_title'), t('dir_sub'), isAdmin() ? `<button class="btn btn-primary" onclick="openContactModal()">${icon('plus')}${t('add_contact')}</button>` : '') +
     `<div class="two-col"><div class="card"><div class="card-head"><h3>${t('neighbours')}</h3><span class="badge b-neutral right">${DB.units.length} ${t('units')}</span></div>${Object.keys(floors).sort((a, b) => b - a).map(f => `<div class="nav-label" style="padding:12px 20px 4px">${floorLabel(f)}</div>${floors[f].map(u => `<div class="person"><div class="avatar" style="background:${u.type === 'garage' ? 'var(--text-3)' : ''}">${esc((u.owner || '?').split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase())}</div><div class="grow"><b>${esc(u.owner)}</b>${u.tenant ? ` <span class="tiny subtle">(${t('tenant')}: ${esc(u.tenant)})</span>` : ''}<div class="small muted">${unitLabel(u)}</div></div>${(isAdmin() || u.sharePhone) && u.phone ? `<a class="btn btn-secondary btn-sm" href="tel:${esc(u.phone)}">${icon('phone')}${esc(u.phone)}</a>` : ''}</div>`).join('')}`).join('')}</div>
@@ -298,13 +306,25 @@ PAGES.profile = () => {
 };
 
 /* ================= UNITS (admin) ================= */
+function unitCard(u, per) {
+  const st = payStatus(u, per); const bal = unitBalance(u.id); const accent = unitAccent(u);
+  return `<div class="card unit-card" onclick="openUnitDetail('${u.id}')"><span class="st dot" style="background:${st === 'paid' ? 'var(--good)' : st === 'partial' ? 'var(--warn)' : 'var(--bad)'}"></span>
+    <div class="unit-card-head"><div class="icn ${accent}">${icon(unitIcon(u))}</div><div class="num-badge ${accent}">${esc(u.num)}</div></div>
+    <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.owner)}</div><div class="tiny subtle">${t('t_' + u.type)} · ${u.size} m²</div>
+    <div class="small" style="margin-top:8px;color:${bal < 0 ? 'var(--bad)' : 'var(--good)'};font-weight:600">${bal < 0 ? t('owes') + ' ' + fmtMoney(-bal, { noDual: true }) : t('up_to_date')}</div></div>`;
+}
 PAGES.units = () => {
   const q = (ui.unitQuery || '').toLowerCase(); const per = monthISO();
   let list = DB.units.slice(); if (ui.unitTab !== 'all') list = list.filter(u => u.type === ui.unitTab); if (q) list = list.filter(u => (u.owner + ' ' + u.num + ' ' + (u.tenant || '')).toLowerCase().includes(q));
+  list.sort((a, b) => naturalUnitCompare(a.num, b.num));
   const tabs = [['all', t('all'), DB.units.length], ['apartment', t('apartments'), DB.units.filter(u => u.type === 'apartment').length], ['room', t('rooms'), DB.units.filter(u => u.type === 'room').length], ['garage', t('garages'), DB.units.filter(u => u.type === 'garage').length]];
+  const floors = [...new Set(list.map(u => u.floor))].sort((a, b) => b - a);
+  const body = floors.length
+    ? floors.map(f => `<div class="floor-group"><div class="floor-label">${floorLabel(f)}</div><div class="unit-grid">${list.filter(u => u.floor === f).map(u => unitCard(u, per)).join('')}</div></div>`).join('')
+    : `<div class="card">${empty('building', t('no_results'))}</div>`;
   return head(t('units_title'), t('units_sub'), `<button class="btn btn-primary" onclick="openUnitModal()">${icon('plus')}${t('add_unit')}</button>`) +
     `<div class="row wrap" style="margin-bottom:14px"><div class="chips">${tabs.map(x => `<button class="chip ${ui.unitTab === x[0] ? 'active' : ''}" onclick="ui.unitTab='${x[0]}';render()">${x[1]} · ${x[2]}</button>`).join('')}</div><input class="input right" style="max-width:260px" placeholder="${t('search')}" value="${esc(ui.unitQuery || '')}" oninput="ui.unitQuery=this.value;render();this.focus();this.setSelectionRange(this.value.length,this.value.length)"></div>
-    <div class="unit-grid">${list.map(u => { const st = payStatus(u, per); const bal = unitBalance(u.id); return `<div class="card unit-card" onclick="openUnitDetail('${u.id}')"><span class="st dot" style="background:${st === 'paid' ? 'var(--good)' : st === 'partial' ? 'var(--warn)' : 'var(--bad)'}"></span><div class="icn">${icon(unitIcon(u))}</div><div class="num">${esc(u.num)}</div><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.owner)}</div><div class="tiny subtle">${t('t_' + u.type)} · ${t('floor')} ${u.floor} · ${u.size} m²</div><div class="small" style="margin-top:8px;color:${bal < 0 ? 'var(--bad)' : 'var(--good)'};font-weight:600">${bal < 0 ? t('owes') + ' ' + fmtMoney(-bal, { noDual: true }) : t('up_to_date')}</div></div>`; }).join('') || `<div class="card">${empty('building', t('no_results'))}</div>`}</div>`;
+    ${body}`;
 };
 function openUnitDetail(id) {
   const u = DB.units.find(x => x.id === id); const pays = DB.payments.filter(p => p.unitId === id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10); const bal = unitBalance(id); const reqs = DB.requests.filter(r => r.unitId === id).length;
