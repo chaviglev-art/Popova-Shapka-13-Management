@@ -59,8 +59,10 @@ create table if not exists units (
   email text default '',
   share_phone boolean default false,
   fee numeric default 0,
-  fee_since text default ''
+  fee_since text default '',
+  prior_debt numeric  -- manual override for debt carried in from before the Payment calendar's tracked years; null = auto-computed
 );
+alter table units add column if not exists prior_debt numeric;
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'profiles_unit_fk') then
     alter table profiles add constraint profiles_unit_fk foreign key (unit_id) references units(id) on delete set null;
@@ -265,7 +267,7 @@ language plpgsql as $$
 begin
   if not can_manage() then
     new.num := old.num; new.type := old.type; new.floor := old.floor; new.size := old.size;
-    new.owner := old.owner; new.fee := old.fee; new.fee_since := old.fee_since;
+    new.owner := old.owner; new.fee := old.fee; new.fee_since := old.fee_since; new.prior_debt := old.prior_debt;
   end if;
   return new;
 end;

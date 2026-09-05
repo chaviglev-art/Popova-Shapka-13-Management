@@ -170,6 +170,7 @@ tr.me td { background: var(--primary-soft); }
 .mcell:hover { transform: scale(1.06); box-shadow: var(--shadow); }
 .mcell.paid { background: var(--good-soft); color: var(--good); } .mcell.partial { background: var(--warn-soft); color: var(--warn); } .mcell.unpaid { background: var(--bad-soft); color: var(--bad); } .mcell.future { background: var(--surface-2); color: var(--text-3); cursor: default; }
 .mcell.ro { cursor: default; } .mcell.ro:hover { transform: none; box-shadow: none; }
+.mini-num { width: 90px; padding: 6px 8px; font-size: .82rem; text-align: right; font-weight: 700; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--text-2); } .legend span { display: inline-flex; align-items: center; gap: 6px; } .legend i { width: 12px; height: 12px; border-radius: 3px; }
 .strip { display: flex; gap: 4px; flex-wrap: wrap; } .strip .cell { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-size: .62rem; font-weight: 700; } .strip .cell i { font-style: normal; }
 .strip .paid { background: var(--good-soft); color: var(--good); } .strip .partial { background: var(--warn-soft); color: var(--warn); } .strip .unpaid { background: var(--bad-soft); color: var(--bad); } .strip .future { background: var(--surface-2); color: var(--text-3); }

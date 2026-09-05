@@ -27,7 +27,7 @@ let DB_SNAPSHOT = null;   // last state known to be persisted — saveData() dif
 /* ---------- column-name maps: js camelCase <-> Supabase snake_case ---------- */
 const TABLE_MAPS = {
   building: [['name', 'name'], ['address', 'address'], ['managerName', 'manager_name'], ['managerPhone', 'manager_phone'], ['managerEmail', 'manager_email'], ['currency', 'currency'], ['showDual', 'show_dual'], ['defaultFee', 'default_fee'], ['iban', 'iban'], ['bank', 'bank'], ['beneficiary', 'beneficiary'], ['openingBalance', 'opening_balance'], ['feesSince', 'fees_since'], ['banner', 'banner']],
-  units: [['id', 'id'], ['num', 'num'], ['type', 'type'], ['floor', 'floor'], ['size', 'size'], ['owner', 'owner'], ['tenant', 'tenant'], ['phone', 'phone'], ['email', 'email'], ['sharePhone', 'share_phone'], ['fee', 'fee'], ['feeSince', 'fee_since']],
+  units: [['id', 'id'], ['num', 'num'], ['type', 'type'], ['floor', 'floor'], ['size', 'size'], ['owner', 'owner'], ['tenant', 'tenant'], ['phone', 'phone'], ['email', 'email'], ['sharePhone', 'share_phone'], ['fee', 'fee'], ['feeSince', 'fee_since'], ['priorDebt', 'prior_debt']],
   payments: [['id', 'id'], ['unitId', 'unit_id'], ['amount', 'amount'], ['period', 'period'], ['date', 'date'], ['note', 'note'], ['method', 'method']],
   expenses: [['id', 'id'], ['date', 'date'], ['amount', 'amount'], ['category', 'category'], ['note', 'note'], ['vendor', 'vendor'], ['url', 'url']],
   news: [['id', 'id'], ['title', 'title'], ['body', 'body'], ['date', 'date'], ['pinned', 'pinned'], ['banner', 'banner']],
@@ -199,15 +199,30 @@ function fmtPeriod(p) { const [y, m] = p.split('-'); return t('months')[parseInt
 
 /* ---------- finance helpers ---------- */
 function paidFor(unitId, period) { return DB.payments.filter(p => p.unitId === unitId && p.period === period).reduce((s, p) => s + p.amount, 0); }
+// Two years before "now" — the boundary the Payment calendar folds older history behind.
+function priorDebtCutoff() { return (new Date().getFullYear() - 2) + '-12'; }
+// Where a unit's running balance ledger starts, and the balance carried in at that point.
+// Normally that's period=firstPeriodFor(unit)/feeSince with balance 0 (compute everything
+// from real payment records). If a unit has a manually-corrected prior debt (set from the
+// Payment calendar's "Previous debts" cell — for history predating what's tracked here),
+// the ledger instead starts right after the two-year cutoff carrying that debt in, and
+// everything before it is ignored so the two aren't double-counted.
+function unitLedgerStart(unitId) {
+  const u = DB.units.find(x => x.id === unitId);
+  if (u && u.priorDebt != null) {
+    const d = new Date(priorDebtCutoff() + '-01T12:00:00'); d.setMonth(d.getMonth() + 1);
+    return { period: monthISO(d), balance: -u.priorDebt };
+  }
+  return { period: (u && u.feeSince) || firstPeriodFor(unitId), balance: 0 };
+}
 function unitBalance(unitId, uptoPeriod) {
-  // charged since the first payment/period we know of, or 12 months back — positive = credit, negative = debt
+  // positive = credit, negative = debt
   const u = DB.units.find(x => x.id === unitId); if (!u) return 0;
-  const start = (u.feeSince) || firstPeriodFor(unitId);
-  let charged = 0; const cur = uptoPeriod || monthISO();
+  const { period: start, balance: startBalance } = unitLedgerStart(unitId);
+  let bal = startBalance; const cur = uptoPeriod || monthISO();
   let d = new Date(start + '-01T12:00:00');
-  while (monthISO(d) <= cur) { charged += u.fee; d.setMonth(d.getMonth() + 1); }
-  const paid = DB.payments.filter(p => p.unitId === unitId && p.period <= cur).reduce((s, p) => s + p.amount, 0);
-  return +(paid - charged).toFixed(2);
+  while (monthISO(d) <= cur) { bal += paidFor(unitId, monthISO(d)) - u.fee; d.setMonth(d.getMonth() + 1); }
+  return +bal.toFixed(2);
 }
 function firstPeriodFor(unitId) {
   if (DB.building.feesSince) return DB.building.feesSince;
