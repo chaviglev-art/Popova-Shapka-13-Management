@@ -94,6 +94,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && MODAL_DISM
 
 /* ---------- auth (Supabase Auth — email + password, real server-side verification) ---------- */
 function isAdmin() { return currentUser && currentUser.role === 'admin'; }
+// A manager is a resident (still has their own unit) elevated to run day-to-day
+// operations — units, payments, expenses, news, votes, events, documents,
+// contacts, the requests inbox. Not Settings/banking, not login management, not
+// the audit trail: those stay gated on isAdmin() alone. Only an admin can grant
+// or revoke this (see openUnitDetail's Access panel / setUnitManager in pages.js).
+function isManager() { return currentUser && !!currentUser.isManager; }
+function canManage() { return isAdmin() || isManager(); }
 function myUnit() { return currentUser ? DB.units.find(u => u.id === currentUser.unitId) : null; }
 
 // Resolves the signed-in Supabase user into currentUser via their `profiles` row.
@@ -105,12 +112,12 @@ async function establishCurrentUser(authUser) {
   const ok = await loadRemoteData();
   if (!ok) { await sb.auth.signOut(); return false; }
   if (profile.is_admin) {
-    currentUser = { id: authUser.id, role: 'admin', unitId: null, name: DB.building.managerName || t('role_admin') };
+    currentUser = { id: authUser.id, role: 'admin', unitId: null, isManager: false, name: DB.building.managerName || t('role_admin') };
     return true;
   }
   const unit = DB.units.find(u => u.id === profile.unit_id);
   if (!unit) { await sb.auth.signOut(); return false; }
-  currentUser = { id: authUser.id, role: 'resident', unitId: unit.id, name: unit.owner };
+  currentUser = { id: authUser.id, role: 'resident', unitId: unit.id, isManager: !!profile.is_manager, name: unit.owner };
   return true;
 }
 async function tryLogin(email, password) {
@@ -142,7 +149,7 @@ function navItems() {
   const items = [
     { id: 'home', icon: 'home', label: t('nav_home'), section: 'section_main' },
     { id: 'finances', icon: 'wallet', label: t('nav_finances') },
-    { id: 'requests', icon: 'inbox', label: t('nav_requests'), count: isAdmin() ? DB.requests.filter(r => r.status === 'new').length : 0 },
+    { id: 'requests', icon: 'inbox', label: t('nav_requests'), count: canManage() ? DB.requests.filter(r => r.status === 'new').length : 0 },
     { id: 'votes', icon: 'vote', label: t('nav_votes'), count: activeVotesFor().length },
     { id: 'news', icon: 'news', label: t('nav_news'), section: 'section_building' },
     { id: 'calendar', icon: 'calendar', label: t('nav_calendar') },
@@ -150,6 +157,7 @@ function navItems() {
     { id: 'directory', icon: 'users', label: t('nav_directory') },
   ];
   if (isAdmin()) items.push({ id: 'units', icon: 'building', label: t('nav_units'), section: 'section_admin' }, { id: 'settings', icon: 'settings', label: t('nav_settings') });
+  else if (isManager()) items.push({ id: 'units', icon: 'building', label: t('nav_units'), section: 'section_admin' }, { id: 'profile', icon: 'user', label: t('nav_profile') });
   else items.push({ id: 'profile', icon: 'user', label: t('nav_profile'), section: 'section_admin' });
   return items;
 }
@@ -169,7 +177,7 @@ function notifications() {
   DB.votes.forEach(v => { if (!v.closed && v.created > seen) items.push({ date: v.created, icon: 'vote', cls: 'violet', text: t('n_vote') + ': ' + v.title, route: 'votes' }); });
   const soon = new Date(); soon.setDate(soon.getDate() + 7);
   DB.events.forEach(e => { if (e.date >= todayISO() && e.date <= monthISO(soon) + '-' + String(soon.getDate()).padStart(2, '0')) items.push({ date: e.date, icon: 'calendar', cls: 'amber', text: t('n_event') + ': ' + e.title + ' · ' + fmtDate(e.date), route: 'calendar' }); });
-  if (isAdmin()) DB.requests.forEach(r => { if (r.status === 'new' && r.date > seen) items.push({ date: r.date, icon: 'inbox', cls: 'red', text: t('n_request') + ' ' + unitLabel(DB.units.find(u => u.id === r.unitId)) + ': ' + r.subject, route: 'requests' }); });
+  if (canManage()) DB.requests.forEach(r => { if (r.status === 'new' && r.date > seen) items.push({ date: r.date, icon: 'inbox', cls: 'red', text: t('n_request') + ' ' + unitLabel(DB.units.find(u => u.id === r.unitId)) + ': ' + r.subject, route: 'requests' }); });
   else DB.requests.filter(r => r.unitId === currentUser.unitId).forEach(r => { (r.comments || []).forEach(c => { if (c.by === 'admin' && c.date > seen) items.push({ date: c.date, icon: 'inbox', cls: 'green', text: t('n_reply') + ': ' + r.subject, route: 'requests' }); }); });
   return items.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
 }
@@ -193,7 +201,7 @@ function render() {
     <aside class="sidebar ${ui.sidebarOpen ? 'open' : ''}">
       <div class="brand"><img src="assets/logo.svg" alt=""><div><b>${esc(DB.building.name)}</b><small>${t('app_sub')}</small></div></div>
       ${nav}
-      <div class="user"><div class="avatar">${esc(initials)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(currentUser.name)}</div><div class="tiny subtle">${isAdmin() ? t('role_admin') : unitLabel(myUnit())}</div></div><button class="btn btn-ghost btn-icon" title="${t('logout')}" onclick="doLogout()">${icon('logout')}</button></div>
+      <div class="user"><div class="avatar">${esc(initials)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(currentUser.name)}</div><div class="tiny subtle">${isAdmin() ? t('role_admin') : isManager() ? t('role_manager') + ' · ' + unitLabel(myUnit()) : unitLabel(myUnit())}</div></div><button class="btn btn-ghost btn-icon" title="${t('logout')}" onclick="doLogout()">${icon('logout')}</button></div>
     </aside>
     <div class="main">
       <header class="topbar">

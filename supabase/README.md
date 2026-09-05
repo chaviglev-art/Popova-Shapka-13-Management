@@ -76,6 +76,23 @@ Optional polish: **Authentication → Email Templates → Invite user** lets you
 customize the subject/body residents see (uses `{{ .ConfirmationURL }}` for
 the link).
 
+## The Manager role
+
+Beyond Admin (you) and Resident, there's a third role: **Manager** — a
+resident elevated to run day-to-day operations (units, payments, expenses,
+news, votes, events, documents, contacts, the requests inbox), for handing
+off the role each year to whichever owner is currently running the
+building, without giving them Settings, banking, login management, or the
+audit trail — those stay admin-only.
+
+To grant or revoke it: Units → open the unit → **Access** section (only
+visible to you as admin) → check/uncheck **Building manager** next to their
+login. It only appears once that unit has a login — create one first if it
+doesn't. This is a plain database write, not the Edge Function, since
+`profiles` already restricts writes to admins via Row Level Security — so
+only you can ever flip this, from anyone's account, including a manager's
+own.
+
 ## Creating a login by hand (fallback, or for the admin account itself)
 
 Dashboard → **Authentication** → **Users** → **Add user** (email + password,

@@ -6,15 +6,24 @@
 
 -- ---------- profiles: links a Supabase Auth user to a unit or to admin ----------
 -- Every login (admin or resident) is a real Supabase Auth user (email + password).
--- profiles.is_admin = true  -> full access to everything
--- profiles.unit_id  = 'apt3' -> a resident, scoped to that unit's private data
+-- profiles.is_admin   = true -> full access to everything, including Settings,
+--                       banking, login management and the audit trail.
+-- profiles.is_manager = true -> a resident (still has a unit_id) elevated to run
+--                       day-to-day operations (units, payments, expenses, news,
+--                       votes, events, documents, contacts, the requests inbox) —
+--                       but not Settings/banking, not login management, not the
+--                       audit trail. Only an admin can grant or revoke this (it's
+--                       a column on this table, and only admins can write here).
+-- profiles.unit_id    = 'apt3' -> a resident (or manager), scoped to that unit.
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   unit_id text,
   is_admin boolean not null default false,
+  is_manager boolean not null default false,
   display_name text,
   created_at timestamptz not null default now()
 );
+alter table profiles add column if not exists is_manager boolean not null default false;
 
 -- ---------- building: single settings row (id fixed to 1) ----------
 create table if not exists building (
@@ -205,6 +214,20 @@ language sql security definer stable as $$
   select coalesce((select is_admin from profiles where id = auth.uid()), false);
 $$;
 
+-- helper: is the current user a manager (elevated resident, day-to-day operations)?
+create or replace function is_manager() returns boolean
+language sql security definer stable as $$
+  select coalesce((select is_manager from profiles where id = auth.uid()), false);
+$$;
+
+-- helper: admin OR manager — the "can run day-to-day operations" check used by
+-- most write policies below. Settings/banking, login management and the audit
+-- trail stay gated on is_admin() alone.
+create or replace function can_manage() returns boolean
+language sql security definer stable as $$
+  select is_admin() or is_manager();
+$$;
+
 -- helper: unit_id of the current user (null for admin / no profile)
 create or replace function my_unit() returns text
 language sql security definer stable as $$
@@ -223,22 +246,24 @@ create policy building_read on building for select using (auth.uid() is not null
 drop policy if exists building_write on building;
 create policy building_write on building for all using (is_admin()) with check (is_admin());
 
--- units: admin sees/edits all; a resident sees only their own unit row
+-- units: admin/manager sees/edits all; a resident sees only their own unit row
 drop policy if exists units_read on units;
-create policy units_read on units for select using (is_admin() or id = my_unit());
+create policy units_read on units for select using (can_manage() or id = my_unit());
 drop policy if exists units_write on units;
-create policy units_write on units for all using (is_admin()) with check (is_admin());
+create policy units_write on units for all using (can_manage()) with check (can_manage());
 
--- a resident may also update their OWN unit row (to edit tenant/phone/email/share_phone
--- from their profile page) — the trigger below still locks down the fields that matter
--- (fee, owner, num, type, floor, size) so they can't rewrite their own fee.
+-- a resident (or manager, via the same path) may also update their OWN unit row
+-- (to edit tenant/phone/email/share_phone from their profile page) — the trigger
+-- below still locks down the fields that matter (fee, owner, num, type, floor,
+-- size) for anyone who isn't admin/manager, so a plain resident can't rewrite
+-- their own fee this way.
 drop policy if exists units_self_update on units;
 create policy units_self_update on units for update using (id = my_unit()) with check (id = my_unit());
 
 create or replace function lock_unit_admin_fields() returns trigger
 language plpgsql as $$
 begin
-  if not is_admin() then
+  if not can_manage() then
     new.num := old.num; new.type := old.type; new.floor := old.floor; new.size := old.size;
     new.owner := old.owner; new.fee := old.fee; new.fee_since := old.fee_since;
   end if;
@@ -249,69 +274,70 @@ drop trigger if exists units_lock_admin_fields on units;
 create trigger units_lock_admin_fields before update on units
   for each row execute function lock_unit_admin_fields();
 
--- payments: admin all; resident can read only their own unit's payments
+-- payments: admin/manager all; resident can read only their own unit's payments
 drop policy if exists payments_read on payments;
-create policy payments_read on payments for select using (is_admin() or unit_id = my_unit());
+create policy payments_read on payments for select using (can_manage() or unit_id = my_unit());
 drop policy if exists payments_write on payments;
-create policy payments_write on payments for all using (is_admin()) with check (is_admin());
+create policy payments_write on payments for all using (can_manage()) with check (can_manage());
 
--- expenses: everyone logged in can read (transparency); only admin writes
+-- expenses: everyone logged in can read (transparency); admin/manager writes
 drop policy if exists expenses_read on expenses;
 create policy expenses_read on expenses for select using (auth.uid() is not null);
 drop policy if exists expenses_write on expenses;
-create policy expenses_write on expenses for all using (is_admin()) with check (is_admin());
+create policy expenses_write on expenses for all using (can_manage()) with check (can_manage());
 
--- news / works / events / documents / contacts: public to logged-in users, admin-only write
+-- news / works / events / documents / contacts: public to logged-in users, admin/manager write
 drop policy if exists news_read on news;
 create policy news_read on news for select using (auth.uid() is not null);
 drop policy if exists news_write on news;
-create policy news_write on news for all using (is_admin()) with check (is_admin());
+create policy news_write on news for all using (can_manage()) with check (can_manage());
 
 drop policy if exists works_read on works;
 create policy works_read on works for select using (auth.uid() is not null);
 drop policy if exists works_write on works;
-create policy works_write on works for all using (is_admin()) with check (is_admin());
+create policy works_write on works for all using (can_manage()) with check (can_manage());
 
 drop policy if exists events_read on events;
 create policy events_read on events for select using (auth.uid() is not null);
 drop policy if exists events_write on events;
-create policy events_write on events for all using (is_admin()) with check (is_admin());
+create policy events_write on events for all using (can_manage()) with check (can_manage());
 
 drop policy if exists documents_read on documents;
 create policy documents_read on documents for select using (auth.uid() is not null);
 drop policy if exists documents_write on documents;
-create policy documents_write on documents for all using (is_admin()) with check (is_admin());
+create policy documents_write on documents for all using (can_manage()) with check (can_manage());
 
 drop policy if exists contacts_read on contacts;
 create policy contacts_read on contacts for select using (auth.uid() is not null);
 drop policy if exists contacts_write on contacts;
-create policy contacts_write on contacts for all using (is_admin()) with check (is_admin());
+create policy contacts_write on contacts for all using (can_manage()) with check (can_manage());
 
--- requests: admin all; resident can read/insert their own unit's requests
+-- requests: admin/manager see and manage all; resident can read/insert their own unit's requests.
+-- Deleting a request outright stays admin-only — a manager can resolve/close one but not erase it.
 drop policy if exists requests_read on requests;
-create policy requests_read on requests for select using (is_admin() or unit_id = my_unit());
+create policy requests_read on requests for select using (can_manage() or unit_id = my_unit());
 drop policy if exists requests_insert on requests;
-create policy requests_insert on requests for insert with check (is_admin() or unit_id = my_unit());
+create policy requests_insert on requests for insert with check (can_manage() or unit_id = my_unit());
 drop policy if exists requests_write on requests;
-create policy requests_write on requests for update using (is_admin()) with check (is_admin());
+create policy requests_write on requests for update using (can_manage()) with check (can_manage());
 drop policy if exists requests_delete on requests;
 create policy requests_delete on requests for delete using (is_admin());
 
 -- request_comments: visible/insertable if you can see the parent request
 drop policy if exists request_comments_read on request_comments;
 create policy request_comments_read on request_comments for select using (
-  is_admin() or exists (select 1 from requests r where r.id = request_id and r.unit_id = my_unit())
+  can_manage() or exists (select 1 from requests r where r.id = request_id and r.unit_id = my_unit())
 );
 drop policy if exists request_comments_insert on request_comments;
 create policy request_comments_insert on request_comments for insert with check (
-  is_admin() or exists (select 1 from requests r where r.id = request_id and r.unit_id = my_unit())
+  can_manage() or exists (select 1 from requests r where r.id = request_id and r.unit_id = my_unit())
 );
 
--- votes: everyone logged in can read; only admin writes
+-- votes: everyone logged in can read; admin/manager writes (create/close/delete)
 drop policy if exists votes_read on votes;
 create policy votes_read on votes for select using (auth.uid() is not null);
 drop policy if exists votes_write on votes;
-create policy votes_write on votes for all using (is_admin()) with check (is_admin());
+create policy votes_write on votes for all using (can_manage()) with check (can_manage());
 
 -- ballots: everyone logged in can read (needed for tallies); a resident can only cast their own unit's ballot
 drop policy if exists ballots_read on ballots;

@@ -61,13 +61,13 @@ async function loadRemoteData() {
     sb.from('ballots').select('*'),
     sb.from('contacts').select('*'),
     sb.from('audit').select('*').order('date', { ascending: false }).limit(300),
-    sb.from('profiles').select('id,unit_id,is_admin,display_name'),
+    sb.from('profiles').select('id,unit_id,is_admin,is_manager,display_name'),
   ]);
   const firstError = [b, u, p, ex, nw, wk, ev, rq, rc, doc, vo, ba, ct, au].find(r => r.error);
   if (firstError) { console.warn('load failed', firstError.error); return false; }
   // profiles: admin sees everyone (used to show login status per unit); a resident only
   // sees their own row (RLS) — harmless, this is never shown to residents.
-  DB.profiles = (pr.data || []).map(r => ({ id: r.id, unitId: r.unit_id, isAdmin: r.is_admin, displayName: r.display_name }));
+  DB.profiles = (pr.data || []).map(r => ({ id: r.id, unitId: r.unit_id, isAdmin: r.is_admin, isManager: r.is_manager, displayName: r.display_name }));
   if (b.data) Object.assign(DB.building, rowToJs(b.data, TABLE_MAPS.building));
   // Postgres sorted `num` as text ("1","10","11",...,"2",...) — re-sort naturally so
   // "2" comes before "10" everywhere units are listed (dropdowns, statements, etc.).

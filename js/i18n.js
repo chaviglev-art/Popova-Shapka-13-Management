@@ -16,7 +16,7 @@ const I18N = {
     confirm_delete: 'Delete this item? This cannot be undone.', yes: 'Yes', no: 'No', all: 'All', none: '—',
     required: 'Please fill in the required fields.', saved: 'Saved', done: 'Done', open: 'Open', view: 'View',
     back: 'Back', next: 'Next', print: 'Print', export: 'Export', today: 'Today', optional: 'optional',
-    role_admin: 'Building manager', role_resident: 'Owner', admin: 'Admin',
+    role_admin: 'Administrator', role_manager: 'Building manager', role_resident: 'Owner', admin: 'Admin',
     theme: 'Theme', theme_light: 'Light', theme_dark: 'Dark', theme_auto: 'Auto', language: 'Language',
     // nav
     nav_home: 'Home', nav_finances: 'Finances', nav_requests: 'Requests', nav_votes: 'Votes', nav_news: 'News',
@@ -125,6 +125,7 @@ const I18N = {
     send_invite_email: 'Send an email invite', send_invite_hint: 'They get a link to set their own password. Uncheck to set one yourself instead.',
     invite_sent: 'Invite email sent.', set_password_title: 'Set your password', set_password_hint: 'Welcome! Choose a password to finish setting up your account.',
     login_active: 'Login active', no_login: 'No login yet', create_login: 'Create login', remove_login: 'Remove access',
+    manager_role_hint: 'Give this owner access to run day-to-day operations (units, payments, expenses, news, votes, requests) — not Settings, banking, logins or the audit trail.',
     remove_login_confirm: 'Remove this login? The owner will no longer be able to sign in.',
   },
 
@@ -141,7 +142,7 @@ const I18N = {
     confirm_delete: 'Да се изтрие ли? Действието е необратимо.', yes: 'Да', no: 'Не', all: 'Всички', none: '—',
     required: 'Моля, попълнете задължителните полета.', saved: 'Запазено', done: 'Готово', open: 'Отвори', view: 'Виж',
     back: 'Назад', next: 'Напред', print: 'Принтирай', export: 'Експорт', today: 'Днес', optional: 'по желание',
-    role_admin: 'Домоуправител', role_resident: 'Собственик', admin: 'Админ',
+    role_admin: 'Администратор', role_manager: 'Домоуправител', role_resident: 'Собственик', admin: 'Админ',
     theme: 'Тема', theme_light: 'Светла', theme_dark: 'Тъмна', theme_auto: 'Авто', language: 'Език',
     nav_home: 'Начало', nav_finances: 'Финанси', nav_requests: 'Сигнали', nav_votes: 'Гласувания', nav_news: 'Новини',
     nav_calendar: 'Календар', nav_documents: 'Документи', nav_directory: 'Контакти', nav_profile: 'Профил',
@@ -236,6 +237,7 @@ const I18N = {
     send_invite_email: 'Изпрати покана по имейл', send_invite_hint: 'Собственикът получава линк да си зададе парола сам. Размаркирайте, за да зададете парола вие.',
     invite_sent: 'Поканата е изпратена по имейл.', set_password_title: 'Задайте парола', set_password_hint: 'Добре дошли! Изберете парола, за да завършите настройката на акаунта си.',
     login_active: 'Достъпът е активен', no_login: 'Няма достъп', create_login: 'Създай достъп', remove_login: 'Премахни достъпа',
+    manager_role_hint: 'Дайте на този собственик достъп да управлява ежедневната работа (обекти, плащания, разходи, новини, гласувания, сигнали) — без Настройки, банкова сметка, достъпи или дневника на действията.',
     remove_login_confirm: 'Да се премахне ли този достъп? Собственикът вече няма да може да влиза.',
   }
 };
