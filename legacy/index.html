@@ -1,0 +1,2486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Попова Шапка 13 — Управление на Сграда</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f13;
+    --bg2: #16161d;
+    --bg3: #1e1e28;
+    --border: #2a2a38;
+    --accent: #c8a96e;
+    --accent2: #e8c98a;
+    --danger: #e05555;
+    --success: #4caf7d;
+    --warning: #e8a030;
+    --text: #e8e4dc;
+    --text2: #9a9490;
+    --text3: #6a6660;
+    --card: #1a1a24;
+    --hover: #22222e;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* GRAIN OVERLAY */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:9999; opacity:.4;
+  }
+
+  /* LOGIN */
+  #loginScreen {
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at 30% 50%, #1a1a2e 0%, #0f0f13 70%);
+    z-index:1000;
+  }
+  .login-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 52px 48px;
+    width: 420px;
+    max-width: 95vw;
+    position:relative;
+    animation: fadeUp .6s ease both;
+  }
+  .login-box::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent));
+  }
+  .login-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight:700;
+    color: var(--accent);
+    margin-bottom: 6px;
+    letter-spacing: .5px;
+  }
+  .login-sub {
+    font-size: .8rem;
+    color: var(--text3);
+    margin-bottom: 36px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .login-box label {
+    display:block;
+    font-size: .75rem;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .login-box input, .form-input, .form-select, .form-textarea {
+    width:100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .9rem;
+    border-radius: 2px;
+    outline:none;
+    transition: border-color .2s;
+  }
+  .login-box input:focus, .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+  }
+  .login-box .login-group { margin-bottom: 18px; }
+  .btn {
+    display: inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding: 11px 22px;
+    border:none; cursor:pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .5px;
+    border-radius: 2px;
+    transition: all .2s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #0f0f13;
+    width:100%;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary {
+    background: var(--bg3);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: var(--danger); color:#fff; }
+  .btn-danger:hover { background: #c84040; }
+  .btn-success { background: var(--success); color:#fff; }
+  .btn-sm { padding: 6px 14px; font-size: .8rem; }
+  .login-error {
+    color: var(--danger); font-size:.82rem;
+    margin-top: 10px; display:none;
+  }
+
+  /* APP LAYOUT */
+  #app { display:none; min-height:100vh; }
+  .sidebar {
+    position:fixed; left:0; top:0; bottom:0;
+    width: 240px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display:flex; flex-direction:column;
+    z-index:100;
+  }
+  .sidebar-logo {
+    padding: 28px 24px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    color: var(--accent);
+    line-height: 1.3;
+  }
+  .sidebar-logo p {
+    font-size: .72rem;
+    color: var(--text3);
+    margin-top: 3px;
+    letter-spacing: .5px;
+  }
+  .sidebar-nav { flex:1; padding: 16px 12px; overflow-y:auto; }
+  .nav-section-label {
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text3);
+    padding: 12px 12px 6px;
+  }
+  .nav-item {
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 12px;
+    border-radius: 2px;
+    cursor:pointer;
+    font-size: .875rem;
+    color: var(--text2);
+    transition: all .15s;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { background: var(--hover); color: var(--text); }
+  .nav-item.active {
+    background: rgba(200,169,110,.1);
+    color: var(--accent);
+    border-color: rgba(200,169,110,.2);
+  }
+  .nav-icon { font-size: 1rem; width:20px; text-align:center; }
+  .sidebar-user {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .sidebar-user-info { font-size:.82rem; }
+  .sidebar-user-name { color: var(--text); font-weight:500; }
+  .sidebar-user-role { color: var(--text3); font-size:.72rem; }
+  .logout-btn {
+    background:none; border:none; cursor:pointer;
+    color: var(--text3); font-size:1rem;
+    padding:4px; border-radius:2px;
+    transition: color .2s;
+  }
+  .logout-btn:hover { color: var(--danger); }
+
+  /* MAIN */
+  .main-content {
+    margin-left: 240px;
+    padding: 32px 40px;
+    min-height: 100vh;
+  }
+  .page { display:none; animation: fadeUp .35s ease both; }
+  .page.active { display:block; }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(12px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+  .page-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--text);
+  }
+  .page-title span { color: var(--accent); }
+
+  /* ANNOUNCEMENT BANNER */
+  #announcementBanner {
+    background: linear-gradient(135deg, rgba(200,169,110,.15), rgba(200,169,110,.05));
+    border: 1px solid rgba(200,169,110,.3);
+    border-left: 3px solid var(--accent);
+    border-radius: 2px;
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    display:none;
+    animation: fadeUp .3s ease both;
+  }
+  #announcementBanner .ann-title {
+    font-weight:600; color: var(--accent2);
+    font-size: .85rem; text-transform:uppercase; letter-spacing:.5px;
+  }
+  #announcementBanner .ann-body { font-size:.9rem; color:var(--text); margin-top:4px; }
+
+  /* CARDS */
+  .cards-grid {
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 22px 24px;
+    position:relative; overflow:hidden;
+  }
+  .stat-card::after {
+    content:'';
+    position:absolute; bottom:0; left:0; right:0; height:2px;
+    background: var(--accent);
+    opacity: .3;
+  }
+  .stat-label {
+    font-size:.72rem; text-transform:uppercase; letter-spacing:1px;
+    color: var(--text3); margin-bottom:8px;
+  }
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--text);
+  }
+  .stat-sub { font-size:.8rem; color:var(--text2); margin-top:4px; }
+
+  /* TABLE */
+  .table-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  table { width:100%; border-collapse:collapse; }
+  thead tr { background: var(--bg3); }
+  th {
+    padding: 13px 16px;
+    text-align:left;
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color: var(--text3);
+    font-weight:600;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 13px 16px;
+    font-size:.875rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align:middle;
+  }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background: var(--hover); }
+  .badge {
+    display:inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight:600;
+    letter-spacing:.3px;
+  }
+  .badge-success { background: rgba(76,175,125,.15); color: var(--success); }
+  .badge-danger { background: rgba(224,85,85,.15); color: var(--danger); }
+  .badge-warning { background: rgba(232,160,48,.15); color: var(--warning); }
+  .badge-info { background: rgba(200,169,110,.15); color: var(--accent); }
+  .badge-neutral { background: var(--bg3); color: var(--text2); }
+
+  /* FORM */
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display:block;
+    font-size:.75rem; text-transform:uppercase; letter-spacing:1px;
+    color: var(--text2); margin-bottom: 7px;
+  }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .form-textarea { resize:vertical; min-height:100px; }
+  .form-select option { background: var(--bg3); }
+
+  /* MODAL */
+  .modal-overlay {
+    position:fixed; inset:0;
+    background: rgba(0,0,0,.7);
+    z-index:500;
+    display:none; align-items:center; justify-content:center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 36px;
+    width: 540px; max-width:95vw;
+    max-height: 90vh; overflow-y:auto;
+    animation: fadeUp .3s ease both;
+    position:relative;
+  }
+  .modal::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .modal h2 {
+    font-family:'Playfair Display',serif;
+    font-size:1.3rem;
+    margin-bottom:24px;
+  }
+  .modal-actions {
+    display:flex; gap:10px; margin-top:24px;
+    justify-content:flex-end;
+  }
+
+  /* NEWS CARDS */
+  .news-grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+  .news-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 24px;
+    position:relative;
+  }
+  .news-card.pinned { border-left: 3px solid var(--accent); }
+  .news-date { font-size:.75rem; color:var(--text3); margin-bottom:6px; }
+  .news-title { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:8px; }
+  .news-body { font-size:.875rem; color:var(--text2); line-height:1.7; }
+  .news-actions { margin-top:12px; display:flex; gap:8px; }
+
+  /* ACTIVITY */
+  .activity-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    display:flex; gap:20px; align-items:flex-start;
+  }
+  .activity-status-dot {
+    width:10px; height:10px; border-radius:50%;
+    margin-top:5px; flex-shrink:0;
+  }
+  .activity-info { flex:1; }
+  .activity-title { font-weight:500; margin-bottom:4px; }
+  .activity-desc { font-size:.85rem; color:var(--text2); line-height:1.6; }
+  .activity-meta { font-size:.75rem; color:var(--text3); margin-top:6px; }
+
+  /* APARTMENTS GRID */
+  .apt-grid {
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+    gap:12px;
+  }
+  .apt-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding:18px;
+    cursor:pointer;
+    transition: all .2s;
+    position:relative;
+  }
+  .apt-card:hover {
+    border-color: var(--accent);
+    transform:translateY(-2px);
+  }
+  .apt-num {
+    font-family:'Playfair Display',serif;
+    font-size:1.6rem;
+    color: var(--accent);
+    margin-bottom:4px;
+  }
+  .apt-name { font-size:.85rem; font-weight:500; }
+  .apt-floor { font-size:.75rem; color:var(--text3); margin-top:2px; }
+  .apt-paid-dot {
+    position:absolute; top:12px; right:12px;
+    width:8px; height:8px; border-radius:50%;
+  }
+
+  /* CALENDAR */
+  .calendar-grid {
+    display:grid; grid-template-columns: repeat(7,1fr);
+    gap:4px;
+  }
+  .cal-day-header {
+    text-align:center; font-size:.7rem;
+    text-transform:uppercase; color:var(--text3);
+    letter-spacing:.5px; padding:8px 0;
+  }
+  .cal-day {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    min-height:70px;
+    padding:6px;
+    position:relative;
+  }
+  .cal-day.today { border-color: var(--accent); }
+  .cal-day.other-month { opacity:.3; }
+  .cal-day-num { font-size:.75rem; color:var(--text3); }
+  .cal-event {
+    background: rgba(200,169,110,.2);
+    color: var(--accent);
+    border-radius:2px;
+    padding:2px 5px;
+    font-size:.68rem;
+    margin-top:3px;
+    cursor:pointer;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  /* VOTES */
+  .vote-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius:2px; padding:24px;
+    margin-bottom:12px;
+  }
+  .vote-title { font-weight:600; margin-bottom:12px; }
+  .vote-option {
+    display:flex; align-items:center; gap:12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    cursor:pointer;
+  }
+  .vote-option:last-child { border-bottom:none; }
+  .vote-bar-container { flex:1; background:var(--bg3); height:6px; border-radius:3px; }
+  .vote-bar { background:var(--accent); height:6px; border-radius:3px; transition:width .5s; }
+  .vote-pct { font-size:.8rem; color:var(--text2); width:36px; text-align:right; }
+  .vote-label { font-size:.875rem; min-width:80px; }
+  .vote-radio { display:none; }
+
+  /* SUBMISSIONS */
+  .submission-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius:2px; padding:20px 24px;
+    margin-bottom:10px;
+  }
+  .submission-header {
+    display:flex; align-items:center; gap:12px; margin-bottom:8px;
+  }
+  .submission-subject { font-weight:500; }
+  .submission-meta { font-size:.78rem; color:var(--text3); }
+  .submission-body { font-size:.875rem; color:var(--text2); margin-top:8px; line-height:1.65; }
+  .submission-reply {
+    margin-top:12px; padding:12px;
+    background:var(--bg3); border-radius:2px;
+    font-size:.85rem; border-left:2px solid var(--accent);
+  }
+
+  /* DOCS */
+  .doc-item {
+    display:flex; align-items:center; gap:16px;
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    transition: background .15s;
+  }
+  .doc-item:hover { background:var(--hover); }
+  .doc-icon { font-size:1.4rem; }
+  .doc-name { font-size:.9rem; font-weight:500; }
+  .doc-meta { font-size:.75rem; color:var(--text3); margin-top:2px; }
+
+  /* PAYMENT CALENDAR */
+  .paycal-container { overflow-x: auto; }
+  .paycal-table { border-collapse: collapse; width: 100%; min-width: 900px; }
+  .paycal-table th {
+    padding: 9px 6px;
+    font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600; white-space: nowrap;
+  }
+  .paycal-table td {
+    padding: 0; border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .paycal-unit-cell {
+    padding: 10px 12px; font-size: .8rem;
+    font-weight: 500; white-space: nowrap;
+    min-width: 140px; border-right: 2px solid var(--border) !important;
+    position: sticky; left: 0; background: var(--card); z-index: 1;
+  }
+  .paycal-unit-type { font-size: .68rem; color: var(--text3); font-weight: 400; }
+  .paycal-cell {
+    width: 52px; height: 44px; text-align: center;
+    font-size: .75rem; cursor: pointer;
+    transition: all .15s; position: relative;
+  }
+  .paycal-cell:hover { filter: brightness(1.3); }
+  .paycal-cell.paid {
+    background: rgba(76,175,125,.18);
+    color: var(--success);
+    font-weight: 600;
+  }
+  .paycal-cell.unpaid {
+    background: rgba(224,85,85,.08);
+    color: var(--text3);
+  }
+  .paycal-cell.future {
+    background: transparent;
+    color: var(--text3);
+    opacity: .4;
+    cursor: default;
+  }
+  .paycal-cell.partial {
+    background: rgba(232,160,48,.15);
+    color: var(--warning);
+    font-weight: 600;
+  }
+  .paycal-totals td {
+    background: var(--bg3);
+    font-weight: 600;
+    font-size: .8rem;
+  }
+  .year-selector {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .year-selector button {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 12px; border-radius: 2px;
+    cursor: pointer; font-size: .85rem; transition: border-color .2s;
+  }
+  .year-selector button:hover { border-color: var(--accent); color: var(--accent); }
+  .year-label { font-weight: 600; min-width: 60px; text-align: center; font-size: 1rem; }
+
+  /* PRINT */
+  @media print {
+    .sidebar, .nav-item, .btn, #loginScreen { display:none!important; }
+    .main-content { margin-left:0; padding:20px; }
+    body { background:#fff; color:#000; }
+    .stat-card, .table-container, .news-card { border:1px solid #ccc; }
+    .stat-value, .page-title, .news-title { color:#000; }
+    th, .stat-label { color:#555; }
+    td { color:#222; }
+  }
+
+  /* TABS */
+  .tab-bar {
+    display:flex; gap:0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom:24px;
+  }
+  .tab-btn {
+    padding:10px 20px; background:none; border:none;
+    font-family:'DM Sans',sans-serif;
+    font-size:.875rem; color:var(--text3);
+    cursor:pointer; border-bottom:2px solid transparent;
+    transition:all .2s; margin-bottom:-1px;
+  }
+  .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* UTILS */
+  .flex { display:flex; }
+  .gap-8 { gap:8px; }
+  .gap-12 { gap:12px; }
+  .mt-16 { margin-top:16px; }
+  .mt-24 { margin-top:24px; }
+  .text-right { text-align:right; }
+  .empty-state {
+    text-align:center; padding:48px 24px;
+    color:var(--text3); font-size:.9rem;
+  }
+  .empty-state .empty-icon { font-size:2.5rem; margin-bottom:12px; }
+  .search-bar {
+    position:relative;
+  }
+  .search-bar input {
+    background:var(--bg3); border:1px solid var(--border);
+    color:var(--text); padding:9px 14px 9px 36px;
+    border-radius:2px; font-family:'DM Sans',sans-serif;
+    font-size:.875rem; outline:none; width:240px;
+    transition:border-color .2s;
+  }
+  .search-bar input:focus { border-color:var(--accent); }
+  .search-bar::before {
+    content:'🔍'; position:absolute; left:10px; top:50%;
+    transform:translateY(-50%); font-size:.8rem; pointer-events:none;
+  }
+  .divider { height:1px; background:var(--border); margin:24px 0; }
+  .text-accent { color:var(--accent); }
+  .text-muted { color:var(--text3); }
+  .font-serif { font-family:'Playfair Display',serif; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">Попова Шапка 13</div>
+    <div class="login-sub">Управление на Сграда · Sofia</div>
+    <div class="login-group">
+      <label>Потребителско Име</label>
+      <input type="text" id="loginUser" placeholder="apartment1 or admin" onkeydown="if(e.key==='Enter')doLogin()">
+    </div>
+    <div class="login-group">
+      <label>Парола</label>
+      <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Вход →</button>
+    <div class="login-error" id="loginErr">Грешно потребителско име или парола.</div>
+    <div style="margin-top:20px;font-size:.75rem;color:var(--text3);border-top:1px solid var(--border);padding-top:14px;">
+      Demo: <strong style="color:var(--text2)">admin</strong> / <strong style="color:var(--text2)">******</strong> &nbsp;|&nbsp; <strong style="color:var(--text2)">apt1</strong> / <strong style="color:var(--text2)">*******</strong>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Попова Шапка 13</h1>
+      <p>Управление на Сграда</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Главно</div>
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">🏠</span> Начало
+      </div>
+      <div class="nav-item" onclick="showPage('news')" id="nav-news">
+        <span class="nav-icon">📰</span> Новини
+      </div>
+      <div class="nav-item" onclick="showPage('activities')" id="nav-activities">
+        <span class="nav-icon">🔧</span> Дейности
+      </div>
+      <div class="nav-item" onclick="showPage('calendar')" id="nav-calendar">
+        <span class="nav-icon">📅</span> Календар
+      </div>
+      <div class="nav-section-label">Сграда</div>
+      <div class="nav-item" onclick="showPage('apartments')" id="nav-apartments">
+        <span class="nav-icon">🏢</span> Апартаменти
+      </div>
+      <div class="nav-item" onclick="showPage('finances')" id="nav-finances">
+        <span class="nav-icon">💰</span> Финанси
+      </div>
+      <div class="nav-item" onclick="showPage('documents')" id="nav-documents">
+        <span class="nav-icon">📁</span> Документи
+      </div>
+      <div class="nav-item" onclick="showPage('votes')" id="nav-votes">
+        <span class="nav-icon">🗳️</span> Гласувания
+      </div>
+      <div class="nav-section-label">Комуникация</div>
+      <div class="nav-item" onclick="showPage('submit')" id="nav-submit">
+        <span class="nav-icon">✉️</span> Подай Сигнал
+      </div>
+      <div class="nav-item" onclick="openModal('changePassModal')" id="nav-changepass">
+        <span class="nav-icon">🔑</span> Смяна на Парола
+      </div>
+      <div id="nav-admin-group">
+        <div class="nav-section-label">Администратор</div>
+        <div class="nav-item" onclick="showPage('admin')" id="nav-admin">
+          <span class="nav-icon">⚙️</span> Админ Панел
+        </div>
+        <div class="nav-item" onclick="showPage('submissions')" id="nav-submissions">
+          <span class="nav-icon">📬</span> Сигнали
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebarUserName">—</div>
+        <div class="sidebar-user-role" id="sidebarUserRole">—</div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()" title="Изход">⏏</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- ANNOUNCEMENT BANNER -->
+    <div id="announcementBanner">
+      <div class="ann-title">📢 Важно Съобщение</div>
+      <div class="ann-body" id="annText"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">Начало <span>— Обзор</span></div>
+        <div style="font-size:.8rem;color:var(--text3)" id="dashDate"></div>
+      </div>
+      <div class="cards-grid" id="dashStats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:14px;">Последни Новини</div>
+          <div id="dashNews"></div>
+        </div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:14px;">Активни Дейности</div>
+          <div id="dashActivities"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEWS -->
+    <div class="page" id="page-news">
+      <div class="page-header">
+        <div class="page-title">Новини <span>& Съобщения</span></div>
+        <button class="btn btn-primary btn-sm" id="addNewsBtn" onclick="openModal('newsModal')" style="display:none">+ Добави Новина</button>
+      </div>
+      <div class="news-grid" id="newsList"></div>
+    </div>
+
+    <!-- ACTIVITIES -->
+    <div class="page" id="page-activities">
+      <div class="page-header">
+        <div class="page-title">Текущи <span>Дейности</span></div>
+        <button class="btn btn-primary btn-sm" id="addActivityBtn" onclick="openModal('activityModal')" style="display:none">+ Добави Дейност</button>
+      </div>
+      <div id="activitiesList"></div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="page" id="page-calendar">
+      <div class="page-header">
+        <div class="page-title">Календар <span>на Сградата</span></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">‹</button>
+          <span id="calMonthLabel" style="font-weight:600;min-width:140px;text-align:center"></span>
+          <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">›</button>
+          <button class="btn btn-primary btn-sm" id="addEventBtn" onclick="openModal('eventModal')" style="display:none">+ Събитие</button>
+        </div>
+      </div>
+      <div class="calendar-grid" id="calGrid">
+        <div class="cal-day-header">Пон</div>
+        <div class="cal-day-header">Вт</div>
+        <div class="cal-day-header">Ср</div>
+        <div class="cal-day-header">Чет</div>
+        <div class="cal-day-header">Пет</div>
+        <div class="cal-day-header">Съб</div>
+        <div class="cal-day-header">Нед</div>
+      </div>
+      <div style="margin-top:20px">
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:14px;">Предстоящи Събития</div>
+        <div id="upcomingEvents"></div>
+      </div>
+    </div>
+
+    <!-- APARTMENTS -->
+    <div class="page" id="page-apartments">
+      <div class="page-header">
+        <div class="page-title">Апартаменти <span>& Гаражи</span></div>
+        <div class="search-bar"><input type="text" id="aptSearch" placeholder="Търси апартамент..." oninput="renderApartments()"></div>
+      </div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchAptTab('all')">Всички (23)</button>
+        <button class="tab-btn" onclick="switchAptTab('apartments')">Апартаменти (15)</button>
+        <button class="tab-btn" onclick="switchAptTab('extra')">Стая</button>
+        <button class="tab-btn" onclick="switchAptTab('garages')">Гаражи (7)</button>
+      </div>
+      <div id="aptGrid" class="apt-grid"></div>
+    </div>
+
+    <!-- FINANCES -->
+    <div class="page" id="page-finances">
+      <div class="page-header">
+        <div class="page-title">Финанси <span>& Такси</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 Принтирай</button>
+          <button class="btn btn-primary btn-sm" id="addPaymentBtn" onclick="openModal('paymentModal')" style="display:none">+ Плащане</button>
+        </div>
+      </div>
+      <div class="cards-grid" id="finStats" style="margin-bottom:24px"></div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchFinTab('summary')">Обобщение</button>
+        <button class="tab-btn" onclick="switchFinTab('paycal')">📅 Годишен Календар</button>
+        <button class="tab-btn" onclick="switchFinTab('history')">История</button>
+      </div>
+      <div class="tab-content active" id="finTab-summary">
+        <div class="table-container"><table id="finTable"><thead><tr><th>Единица</th><th>Собственик</th><th>Месечна Такса</th><th>Платено</th><th>Баланс</th><th>Статус</th></tr></thead><tbody id="finBody"></tbody></table></div>
+      </div>
+      <div class="tab-content" id="finTab-paycal">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+          <div class="year-selector">
+            <button onclick="changePayCalYear(-1)">‹</button>
+            <span class="year-label" id="payCalYearLabel">2026</span>
+            <button onclick="changePayCalYear(1)">›</button>
+          </div>
+          <div style="display:flex;gap:12px;font-size:.78rem;align-items:center;color:var(--text2)">
+            <span style="color:var(--success)">■</span> Платено &nbsp;
+            <span style="color:var(--warning)">■</span> Частично &nbsp;
+            <span style="color:var(--danger)">■</span> Неплатено &nbsp;
+            <span style="color:var(--text3)">■</span> Бъдещо
+          </div>
+        </div>
+        <div class="paycal-container table-container">
+          <table class="paycal-table" id="payCalTable"></table>
+        </div>
+        <div style="margin-top:10px;font-size:.75rem;color:var(--text3)" id="payCalAdminHint"></div>
+      </div>
+      <div class="tab-content" id="finTab-history">
+        <div class="table-container"><table><thead><tr><th>Дата</th><th>Единица</th><th>Собственик</th><th>Сума</th><th>Период</th><th>Бележка</th></tr></thead><tbody id="finHistBody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div class="page" id="page-documents">
+      <div class="page-header">
+        <div class="page-title">Документи <span>& Файлове</span></div>
+        <button class="btn btn-primary btn-sm" id="addDocBtn" onclick="openModal('docModal')" style="display:none">+ Добави Документ</button>
+      </div>
+      <div class="table-container">
+        <div id="docList"></div>
+      </div>
+    </div>
+
+    <!-- VOTES -->
+    <div class="page" id="page-votes">
+      <div class="page-header">
+        <div class="page-title">Гласувания <span>& Анкети</span></div>
+        <button class="btn btn-primary btn-sm" id="addVoteBtn" onclick="openModal('voteModal')" style="display:none">+ Нова Анкета</button>
+      </div>
+      <div id="votesList"></div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="page" id="page-submit">
+      <div class="page-header">
+        <div class="page-title">Подай <span>Сигнал / Въпрос</span></div>
+      </div>
+      <div style="max-width:580px">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:2px;padding:32px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Апартамент</label>
+              <input class="form-input" id="subUnit" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Категория</label>
+              <select class="form-select" id="subCat">
+                <option>Поддръжка</option>
+                <option>Шум</option>
+                <option>Предложение</option>
+                <option>Въпрос</option>
+                <option>Друго</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Тема</label>
+            <input class="form-input" id="subSubject" placeholder="Кратко описание...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Описание</label>
+            <textarea class="form-textarea" id="subBody" rows="5" placeholder="Детайлно описание на сигнала или въпроса..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="submitIssue()">Изпрати Сигнал →</button>
+          <div id="subSuccess" style="color:var(--success);margin-top:12px;display:none;font-size:.875rem">✓ Сигналът е изпратен успешно!</div>
+        </div>
+        <div style="margin-top:24px">
+          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:14px;">Моите Сигнали</div>
+          <div id="mySubmissions"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="page" id="page-admin">
+      <div class="page-header">
+        <div class="page-title">Администраторски <span>Панел</span></div>
+      </div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchAdminTab('units')">Единици</button>
+        <button class="tab-btn" onclick="switchAdminTab('users')">Потребители</button>
+        <button class="tab-btn" onclick="switchAdminTab('balance')">💰 Баланс</button>
+        <button class="tab-btn" onclick="switchAdminTab('announcement')">Банер</button>
+        <button class="tab-btn" onclick="switchAdminTab('export')">Експорт / Импорт</button>
+      </div>
+      <div class="tab-content active" id="adminTab-units">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:.9rem;color:var(--text2)">Управление на апартаменти, стаи и гаражи</div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('unitModal')">+ Добави Единица</button>
+        </div>
+        <div class="table-container">
+          <table><thead><tr><th>№</th><th>Тип</th><th>Етаж</th><th>m²</th><th>Собственик</th><th>Наемател</th><th>Месечна Такса</th><th>Потребител</th><th></th></tr></thead>
+          <tbody id="adminUnitsBody"></tbody></table>
+        </div>
+      </div>
+      <div class="tab-content" id="adminTab-users">
+        <div style="margin-bottom:16px;font-size:.875rem;color:var(--text2)">Всички потребителски акаунти</div>
+        <div class="table-container">
+          <table><thead><tr><th>Потребителско Име</th><th>Роля</th><th>Единица</th><th>Последен Вход</th><th></th></tr></thead>
+          <tbody id="adminUsersBody"></tbody></table>
+        </div>
+      </div>
+      <div class="tab-content" id="adminTab-balance">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:860px">
+          <!-- Opening balance -->
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:14px">Начален / Преходен Баланс</div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:2px;padding:24px">
+              <div style="font-size:.82rem;color:var(--text2);margin-bottom:14px;line-height:1.6">
+                Въведете сумата, с която сградата вече разполага от предишни периоди (спестявания, преходен баланс от предходна година и т.н.).
+              </div>
+              <div class="form-group">
+                <label class="form-label">Начален Баланс (лв.)</label>
+                <input class="form-input" type="number" id="bankBalInput" min="0" step="0.01" placeholder="0.00">
+              </div>
+              <button class="btn btn-primary" onclick="saveBankBalance()">Запази Баланс</button>
+              <div id="bankBalOk" style="color:var(--success);font-size:.82rem;margin-top:10px;display:none">✓ Балансът е запазен!</div>
+            </div>
+            <!-- Summary -->
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:2px;padding:24px;margin-top:16px">
+              <div style="font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:16px">Финансово Резюме</div>
+              <div id="balanceSummary"></div>
+            </div>
+          </div>
+          <!-- Expenses -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <div style="font-family:'Playfair Display',serif;font-size:1rem">Разходи на Сградата</div>
+              <button class="btn btn-primary btn-sm" onclick="openModal('expenseModal')">+ Разход</button>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:2px;overflow:hidden" id="expenseList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="adminTab-announcement">
+        <div style="max-width:520px">
+          <div class="form-group">
+            <label class="form-label">Банер Съобщение (оставете празно за скриване)</label>
+            <textarea class="form-textarea" id="annInput" rows="3" placeholder="Важно съобщение до всички обитатели..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="saveAnnouncement()">Запази Банер</button>
+          <button class="btn btn-danger" style="margin-left:8px" onclick="clearAnnouncement()">Изчисти</button>
+        </div>
+      </div>
+      <div class="tab-content" id="adminTab-export">
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:400px">
+          <div style="font-size:.875rem;color:var(--text2);margin-bottom:8px">Запазете всички данни като JSON файл за резервно копие.</div>
+          <button class="btn btn-secondary" onclick="exportData()">⬇ Изтегли JSON Резервно Копие</button>
+          <div class="divider"></div>
+          <label class="form-label">Импортиране на данни</label>
+          <input type="file" accept=".json" id="importFile" onchange="importData(this)" style="color:var(--text2);font-size:.85rem">
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMISSIONS (ADMIN) -->
+    <div class="page" id="page-submissions">
+      <div class="page-header">
+        <div class="page-title">Сигнали <span>& Въпроси</span></div>
+        <div style="display:flex;gap:8px">
+          <select class="form-select" style="width:auto;font-size:.8rem" onchange="filterSubmissions(this.value)" id="subFilter">
+            <option value="">Всички</option>
+            <option value="Нов">Нови</option>
+            <option value="В процес">В процес</option>
+            <option value="Решен">Решени</option>
+          </select>
+        </div>
+      </div>
+      <div id="adminSubmissionsList"></div>
+    </div>
+
+  </div><!-- end main-content -->
+</div><!-- end app -->
+
+<!-- MODALS -->
+<div class="modal-overlay" id="newsModal">
+  <div class="modal">
+    <h2>Добави Новина</h2>
+    <div class="form-group"><label class="form-label">Заглавие</label><input class="form-input" id="newsTitleInput" placeholder="Заглавие на новината..."></div>
+    <div class="form-group"><label class="form-label">Съдържание</label><textarea class="form-textarea" id="newsBodyInput" rows="5" placeholder="Текст на новината..."></textarea></div>
+    <div class="form-group"><label class="form-label"><input type="checkbox" id="newsPinned"> Закачена (Pinned)</label></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newsModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveNews()">Публикувай</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="activityModal">
+  <div class="modal">
+    <h2>Добави Дейност</h2>
+    <div class="form-group"><label class="form-label">Наименование</label><input class="form-input" id="actTitleInput"></div>
+    <div class="form-group"><label class="form-label">Описание</label><textarea class="form-textarea" id="actDescInput" rows="3"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Статус</label>
+        <select class="form-select" id="actStatusInput">
+          <option>Планирана</option><option>В процес</option><option>Завършена</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Прогрес %</label>
+        <input class="form-input" type="number" id="actProgressInput" min="0" max="100" value="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Начало</label><input class="form-input" type="date" id="actStartInput"></div>
+      <div class="form-group"><label class="form-label">Очакван Край</label><input class="form-input" type="date" id="actEndInput"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('activityModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveActivity()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="eventModal">
+  <div class="modal">
+    <h2>Добави Събитие</h2>
+    <div class="form-group"><label class="form-label">Заглавие</label><input class="form-input" id="evTitleInput"></div>
+    <div class="form-group"><label class="form-label">Описание</label><textarea class="form-textarea" id="evDescInput" rows="2"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Дата</label><input class="form-input" type="date" id="evDateInput"></div>
+      <div class="form-group"><label class="form-label">Час</label><input class="form-input" type="time" id="evTimeInput"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('eventModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveEvent()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal">
+    <h2>Запиши Плащане</h2>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Единица</label>
+        <select class="form-select" id="payUnitInput" id="payUnit"></select>
+      </div>
+      <div class="form-group"><label class="form-label">Сума (лв.)</label>
+        <input class="form-input" type="number" id="payAmountInput" min="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Период</label>
+        <input class="form-input" type="month" id="payPeriodInput">
+      </div>
+      <div class="form-group"><label class="form-label">Дата</label>
+        <input class="form-input" type="date" id="payDateInput">
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Бележка</label>
+        <input class="form-input" id="payNoteInput" placeholder="Незадължителна бележка..."></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('paymentModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="savePayment()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="docModal">
+  <div class="modal">
+    <h2>Добави Документ</h2>
+    <div class="form-group"><label class="form-label">Наименование</label><input class="form-input" id="docNameInput"></div>
+    <div class="form-group"><label class="form-label">Категория</label>
+      <select class="form-select" id="docCatInput">
+        <option>Правилник</option><option>Застраховка</option><option>Договор</option><option>Протокол</option><option>Друго</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Линк / URL (Google Drive, Dropbox...)</label>
+      <input class="form-input" id="docUrlInput" placeholder="https://..."></div>
+    <div class="form-group"><label class="form-label">Бележка</label><input class="form-input" id="docNoteInput"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('docModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveDoc()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="voteModal">
+  <div class="modal">
+    <h2>Нова Анкета</h2>
+    <div class="form-group"><label class="form-label">Въпрос</label><input class="form-input" id="voteTitleInput"></div>
+    <div class="form-group"><label class="form-label">Опции (по един ред)</label>
+      <textarea class="form-textarea" id="voteOptionsInput" rows="4" placeholder="Да&#10;Не&#10;Въздържал се"></textarea>
+    </div>
+    <div class="form-group"><label class="form-label">Краен Срок</label>
+      <input class="form-input" type="date" id="voteDeadlineInput">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('voteModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveVote()">Публикувай</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="unitModal">
+  <div class="modal">
+    <h2>Добави / Редактирай Единица</h2>
+    <input type="hidden" id="unitEditId">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">№ / Код</label><input class="form-input" id="unitNumInput"></div>
+      <div class="form-group"><label class="form-label">Тип</label>
+        <select class="form-select" id="unitTypeInput">
+          <option>Апартамент</option><option>Стая</option><option>Гараж</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Етаж</label><input class="form-input" type="number" id="unitFloorInput"></div>
+      <div class="form-group"><label class="form-label">Площ (m²)</label><input class="form-input" type="number" id="unitSizeInput"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Собственик</label><input class="form-input" id="unitOwnerInput"></div>
+    <div class="form-group"><label class="form-label">Наемател (ако е различен)</label><input class="form-input" id="unitTenantInput"></div>
+    <div class="form-group"><label class="form-label">Телефон за Контакт</label><input class="form-input" id="unitPhoneInput"></div>
+    <div class="form-group"><label class="form-label">Месечна Такса (лв.)</label><input class="form-input" type="number" id="unitFeeInput"></div>
+    <div class="form-group"><label class="form-label">Потребителско Име</label><input class="form-input" id="unitUserInput"></div>
+    <div class="form-group"><label class="form-label">Парола</label><input class="form-input" type="password" id="unitPassInput" placeholder="Оставете празно за без промяна"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('unitModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveUnit()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="replyModal">
+  <div class="modal">
+    <h2>Отговор на Сигнал</h2>
+    <input type="hidden" id="replySubId">
+    <div id="replySubInfo" style="background:var(--bg3);padding:14px;border-radius:2px;margin-bottom:16px;font-size:.875rem;color:var(--text2)"></div>
+    <div class="form-group"><label class="form-label">Статус</label>
+      <select class="form-select" id="replyStatus">
+        <option>Нов</option><option>В процес</option><option>Решен</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Отговор</label>
+      <textarea class="form-textarea" id="replyText" rows="4"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('replyModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveReply()">Изпрати Отговор</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="aptDetailModal">
+  <div class="modal">
+    <h2 id="aptDetailTitle">Апартамент</h2>
+    <div id="aptDetailBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('aptDetailModal')">Затвори</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="changePassModal">
+  <div class="modal" style="max-width:420px">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div>
+    <h2>🔑 Смяна на Парола</h2>
+    <div style="font-size:.85rem;color:var(--text2);margin-bottom:20px" id="changePassWho"></div>
+    <div class="form-group">
+      <label class="form-label">Текуща Парола</label>
+      <input class="form-input" type="password" id="cpOld" placeholder="••••••••">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Нова Парола</label>
+      <input class="form-input" type="password" id="cpNew" placeholder="••••••••">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Потвърди Нова Парола</label>
+      <input class="form-input" type="password" id="cpConfirm" placeholder="••••••••">
+    </div>
+    <div id="cpError" style="color:var(--danger);font-size:.82rem;margin-top:-8px;margin-bottom:10px;display:none"></div>
+    <div id="cpSuccess" style="color:var(--success);font-size:.82rem;margin-top:-8px;margin-bottom:10px;display:none">✓ Паролата е сменена успешно!</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('changePassModal');cpReset()">Отказ</button>
+      <button class="btn btn-primary" onclick="doChangePassword()">Смени Парола</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT CELL EDIT MODAL (Admin) -->
+<div class="modal-overlay" id="paymentCellModal">
+  <div class="modal" style="max-width:460px">
+    <h2 id="paymentCellTitle">Плащане</h2>
+    <div id="paymentCellInfo" style="background:var(--bg3);padding:12px;border-radius:2px;font-size:.85rem;color:var(--text2);margin-bottom:18px"></div>
+    <div id="paymentCellExisting" style="margin-bottom:16px"></div>
+    <div style="font-family:'Playfair Display',serif;font-size:.95rem;margin-bottom:12px">Добави Плащане</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Сума (лв.)</label>
+        <input class="form-input" type="number" id="pcAmount" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Дата на Плащане</label>
+        <input class="form-input" type="date" id="pcDate">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Бележка</label>
+      <input class="form-input" id="pcNote" placeholder="Незадължителна бележка...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('paymentCellModal')">Затвори</button>
+      <button class="btn btn-primary" onclick="savePaymentCell()">Добави</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="modal-overlay" id="expenseModal">
+  <div class="modal" style="max-width:440px">
+    <h2>Добави Разход</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Сума (лв.)</label>
+        <input class="form-input" type="number" id="expAmount" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Дата</label>
+        <input class="form-input" type="date" id="expDate">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Категория</label>
+      <select class="form-select" id="expCat">
+        <option>Ремонт</option>
+        <option>Почистване</option>
+        <option>Асансьор</option>
+        <option>Ел. Консумация</option>
+        <option>Водоснабдяване</option>
+        <option>Застраховка</option>
+        <option>Административни</option>
+        <option>Друго</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Описание</label>
+      <input class="form-input" id="expNote" placeholder="Кратко описание на разхода...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('expenseModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Запази</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA STORE ====================
+const KEY = 'popova13_data';
+
+function defaultData() {
+  const units = [];
+  for(let i=1;i<=15;i++){
+    units.push({
+      id:'apt'+i, num:String(i), type:'Апартамент',
+      floor: Math.floor((i-1)/3)+1,
+      size: [55,62,48,70,80,55,62,48,70,80,55,62,48,70,80][i-1],
+      owner:'Собственик '+i, tenant:'', phone:'', fee:40,
+      username:'apt'+i, password:'pass123'
+    });
+  }
+  units.push({id:'room1',num:'R1',type:'Стая',floor:0,size:25,owner:'Наемател Стая',tenant:'',phone:'',fee:25,username:'room1',password:'pass123'});
+  for(let i=1;i<=7;i++){
+    units.push({id:'gar'+i,num:'G'+i,type:'Гараж',floor:-1,size:14,owner:'Собственик '+i,tenant:'',phone:'',fee:15,username:'gar'+i,password:'pass123'});
+  }
+
+  return {
+    units,
+    payments:[
+      {id:'p1',unitId:'apt1',amount:40,period:'2026-01',date:'2026-01-05',note:''},
+      {id:'p2',unitId:'apt2',amount:40,period:'2026-01',date:'2026-01-07',note:''},
+      {id:'p3',unitId:'apt3',amount:40,period:'2026-01',date:'2026-01-10',note:''},
+      {id:'p4',unitId:'apt1',amount:40,period:'2026-02',date:'2026-02-04',note:''},
+    ],
+    news:[
+      {id:'n1',title:'Добре дошли в новото приложение!',body:'Уважаеми обитатели, с удоволствие ви представяме новата система за управление на сградата. Тук ще намирате актуална информация, можете да подавате сигнали и да следите таксите.',date:'2026-01-15',pinned:true},
+      {id:'n2',title:'Почистване на общите части',body:'На 20-ти февруари ще се извърши генерално почистване на коридорите и входа. Моля, пазете реда!',date:'2026-02-10',pinned:false},
+    ],
+    activities:[
+      {id:'a1',title:'Ремонт на асансьора',desc:'Подмяна на кабела и ревизия на механизма на асансьора.',status:'В процес',progress:60,start:'2026-02-01',end:'2026-03-01'},
+      {id:'a2',title:'Боядисване на стълбище',desc:'Освежаване на стените в стълбищната клетка с бяла боя.',status:'Планирана',progress:0,start:'2026-03-15',end:'2026-04-01'},
+    ],
+    events:[
+      {id:'e1',title:'Общо събрание',desc:'Годишно общо събрание на собствениците',date:'2026-03-10',time:'18:00'},
+      {id:'e2',title:'Преглед на покрива',desc:'Инспекция от строителна фирма',date:'2026-02-28',time:'10:00'},
+    ],
+    submissions:[
+      {id:'s1',unitId:'apt3',unit:'Апартамент 3',category:'Поддръжка',subject:'Теч в банята',body:'От известно време има теч в таванa на банята, идва отгоре.',date:'2026-02-12',status:'В процес',reply:'Изпратихме водопроводчик, ще се свърже с вас до 2 дни.'},
+    ],
+    documents:[
+      {id:'d1',name:'Правилник на Сградата 2024',category:'Правилник',url:'#',note:'Актуален правилник',date:'2024-01-01'},
+      {id:'d2',name:'Застраховка на Сградата',category:'Застраховка',url:'#',note:'Валидна до 31.12.2026',date:'2026-01-01'},
+    ],
+    votes:[
+      {id:'v1',title:'Трябва ли да инсталираме видеонаблюдение?',options:['Да','Не','Въздържал се'],votes:{},deadline:'2026-03-31'},
+    ],
+    announcement:'',
+    bankBalance: 0,       // opening / carry-over balance entered by admin
+    expenses: [],         // [{id, date, amount, category, note}]
+    adminUser:{username:'admin',password:'admin123'}
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if(raw) {
+      const d = JSON.parse(raw);
+      // Migrate old saves
+      if(d.bankBalance === undefined) d.bankBalance = 0;
+      if(!d.expenses) d.expenses = [];
+      return d;
+    }
+  } catch(e){}
+  return defaultData();
+}
+
+function saveData() {
+  localStorage.setItem(KEY, JSON.stringify(DB));
+}
+
+let DB = loadData();
+let currentUser = null;
+let currentAptTab = 'all';
+let calendarDate = new Date();
+let editingNewsId = null;
+
+// ==================== AUTH ====================
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  const err = document.getElementById('loginErr');
+  err.style.display='none';
+
+  if(u===DB.adminUser.username && p===DB.adminUser.password) {
+    currentUser = {username:u, role:'admin', displayName:'Администратор', unitId:null};
+    startApp();
+    return;
+  }
+  const unit = DB.units.find(x=>x.username===u && x.password===p);
+  if(unit) {
+    currentUser = {username:u, role:'resident', displayName: unit.type+' '+unit.num, unitId:unit.id};
+    startApp();
+    return;
+  }
+  err.style.display='block';
+}
+
+function startApp() {
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('sidebarUserName').textContent = currentUser.displayName;
+  document.getElementById('sidebarUserRole').textContent = currentUser.role==='admin'?'Администратор':'Обитател';
+
+  if(currentUser.role!=='admin') {
+    document.getElementById('nav-admin-group').style.display='none';
+  } else {
+    document.getElementById('addNewsBtn').style.display='flex';
+    document.getElementById('addActivityBtn').style.display='flex';
+    document.getElementById('addEventBtn').style.display='flex';
+    document.getElementById('addPaymentBtn').style.display='flex';
+    document.getElementById('addDocBtn').style.display='flex';
+    document.getElementById('addVoteBtn').style.display='flex';
+  }
+
+  // Announcement
+  if(DB.announcement) {
+    document.getElementById('annText').textContent = DB.announcement;
+    document.getElementById('announcementBanner').style.display='block';
+    document.getElementById('annInput') && (document.getElementById('annInput').value = DB.announcement);
+  }
+
+  renderDashboard();
+  renderApartments();
+  renderFinances();
+  renderNews();
+  renderActivities();
+  renderCalendar();
+  renderVotes();
+  renderDocuments();
+  renderSubmissions();
+
+  const unit = DB.units.find(x=>x.id===currentUser.unitId);
+  if(unit) {
+    document.getElementById('subUnit').value = unit.type+' '+unit.num;
+  } else {
+    document.getElementById('subUnit').value = 'Администратор';
+  }
+}
+
+function doLogout() {
+  currentUser=null;
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginErr').style.display='none';
+}
+
+// ==================== NAVIGATION ====================
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const nav = document.getElementById('nav-'+p);
+  if(nav) nav.classList.add('active');
+  if(p==='admin') renderAdminUnits();
+  if(p==='submissions') renderAdminSubmissions();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  editingNewsId=null;
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+});
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const now = new Date();
+  document.getElementById('dashDate').textContent = now.toLocaleDateString('bg-BG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  const thisMonth = now.toISOString().slice(0,7);
+  const totalFee = DB.units.reduce((s,u)=>s+u.fee,0);
+  const collected = DB.payments.filter(p=>p.period===thisMonth).reduce((s,p)=>s+p.amount,0);
+  const outstanding = totalFee - collected;
+
+  const statsEl = document.getElementById('dashStats');
+  if(currentUser.role==='admin') {
+    const allCollected = DB.payments.reduce((s,p)=>s+p.amount,0);
+    const allExpenses = DB.expenses.reduce((s,e)=>s+e.amount,0);
+    const bankTotal = (DB.bankBalance||0) + allCollected - allExpenses;
+    statsEl.innerHTML = `
+      <div class="stat-card"><div class="stat-label">Общо Единици</div><div class="stat-value">${DB.units.length}</div><div class="stat-sub">15 Апарт. · 1 Стая · 7 Гаража</div></div>
+      <div class="stat-card"><div class="stat-label">Събрано (${thisMonth})</div><div class="stat-value" style="color:var(--success)">${collected} лв.</div><div class="stat-sub">от ${totalFee} лв. общо</div></div>
+      <div class="stat-card"><div class="stat-label">Неплатено</div><div class="stat-value" style="color:${outstanding>0?'var(--danger)':'var(--success)'}">${outstanding} лв.</div><div class="stat-sub">за текущия месец</div></div>
+      <div class="stat-card" style="border-color:rgba(200,169,110,.4)"><div class="stat-label">💰 Баланс на Сградата</div><div class="stat-value" style="color:var(--accent2)">${bankTotal.toFixed(2)} лв.</div><div class="stat-sub">преходен + събрано − разходи</div></div>
+      <div class="stat-card"><div class="stat-label">Нови Сигнали</div><div class="stat-value">${DB.submissions.filter(s=>s.status==='Нов').length}</div><div class="stat-sub">нерегледани</div></div>
+    `;
+  } else {
+    const unit = DB.units.find(x=>x.id===currentUser.unitId);
+    if(unit) {
+      const myPaid = DB.payments.filter(p=>p.unitId===unit.id && p.period===thisMonth).reduce((s,p)=>s+p.amount,0);
+      statsEl.innerHTML = `
+        <div class="stat-card"><div class="stat-label">Моята Такса</div><div class="stat-value">${unit.fee} лв.</div><div class="stat-sub">месечна вноска</div></div>
+        <div class="stat-card"><div class="stat-label">Платено (${thisMonth})</div><div class="stat-value" style="color:${myPaid>=unit.fee?'var(--success)':'var(--warning)'}">${myPaid} лв.</div><div class="stat-sub">${myPaid>=unit.fee?'✓ Платено':'Очаква плащане'}</div></div>
+        <div class="stat-card"><div class="stat-label">Сграда Събрано</div><div class="stat-value">${collected} лв.</div><div class="stat-sub">за ${thisMonth}</div></div>
+      `;
+    }
+  }
+
+  // News
+  const dashNews = document.getElementById('dashNews');
+  const latest = DB.news.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+  dashNews.innerHTML = latest.map(n=>`
+    <div class="submission-card" style="margin-bottom:10px;cursor:pointer" onclick="showPage('news')">
+      <div style="font-size:.75rem;color:var(--text3)">${formatDate(n.date)}</div>
+      <div style="font-weight:500;margin-top:4px">${n.title}</div>
+      <div style="font-size:.82rem;color:var(--text2);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${n.body}</div>
+    </div>
+  `).join('') || '<div class="empty-state" style="padding:20px">Няма новини</div>';
+
+  // Activities
+  const dashAct = document.getElementById('dashActivities');
+  const active = DB.activities.filter(a=>a.status!=='Завършена').slice(0,3);
+  dashAct.innerHTML = active.map(a=>{
+    const col = a.status==='В процес'?'var(--warning)':a.status==='Завършена'?'var(--success)':'var(--text3)';
+    return `<div class="activity-card" style="margin-bottom:10px">
+      <div class="activity-status-dot" style="background:${col}"></div>
+      <div>
+        <div style="font-weight:500;font-size:.9rem">${a.title}</div>
+        <div style="font-size:.78rem;color:var(--text3);margin-top:3px">${a.status} · ${a.progress}%</div>
+        <div style="background:var(--bg3);height:4px;border-radius:2px;margin-top:6px;width:140px">
+          <div style="background:${col};height:4px;border-radius:2px;width:${a.progress}%"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-state" style="padding:20px">Няма активни дейности</div>';
+}
+
+// ==================== NEWS ====================
+function renderNews() {
+  const list = document.getElementById('newsList');
+  const sorted = DB.news.slice().sort((a,b)=>(b.pinned-a.pinned)||(b.date.localeCompare(a.date)));
+  list.innerHTML = sorted.map(n=>`
+    <div class="news-card ${n.pinned?'pinned':''}">
+      <div class="news-date">${formatDate(n.date)} ${n.pinned?'<span class="badge badge-info">📌 Закачена</span>':''}</div>
+      <div class="news-title">${n.title}</div>
+      <div class="news-body">${n.body}</div>
+      ${currentUser.role==='admin'?`<div class="news-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editNews('${n.id}')">✏ Редактирай</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteNews('${n.id}')">🗑</button>
+      </div>`:''}
+    </div>
+  `).join('') || '<div class="empty-state"><div class="empty-icon">📰</div>Няма публикувани новини</div>';
+}
+
+function saveNews() {
+  const title = document.getElementById('newsTitleInput').value.trim();
+  const body = document.getElementById('newsBodyInput').value.trim();
+  const pinned = document.getElementById('newsPinned').checked;
+  if(!title||!body) return alert('Попълнете всички полета');
+
+  if(editingNewsId) {
+    const n = DB.news.find(x=>x.id===editingNewsId);
+    n.title=title; n.body=body; n.pinned=pinned;
+  } else {
+    DB.news.push({id:'n'+Date.now(),title,body,pinned,date:new Date().toISOString().slice(0,10)});
+  }
+  saveData(); closeModal('newsModal'); renderNews(); renderDashboard();
+  document.getElementById('newsTitleInput').value='';
+  document.getElementById('newsBodyInput').value='';
+  document.getElementById('newsPinned').checked=false;
+}
+
+function editNews(id) {
+  const n = DB.news.find(x=>x.id===id);
+  editingNewsId=id;
+  document.getElementById('newsTitleInput').value=n.title;
+  document.getElementById('newsBodyInput').value=n.body;
+  document.getElementById('newsPinned').checked=n.pinned;
+  openModal('newsModal');
+}
+
+function deleteNews(id) {
+  if(!confirm('Изтрий тази новина?')) return;
+  DB.news=DB.news.filter(x=>x.id!==id);
+  saveData(); renderNews(); renderDashboard();
+}
+
+// ==================== ACTIVITIES ====================
+function renderActivities() {
+  const list = document.getElementById('activitiesList');
+  if(!DB.activities.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🔧</div>Няма дейности</div>'; return; }
+  const statusColor = {Планирана:'var(--text3)','В процес':'var(--warning)',Завършена:'var(--success)'};
+  list.innerHTML = DB.activities.map(a=>`
+    <div class="activity-card">
+      <div class="activity-status-dot" style="background:${statusColor[a.status]||'var(--text3)'}"></div>
+      <div class="activity-info">
+        <div class="activity-title">${a.title}
+          <span class="badge ${a.status==='В процес'?'badge-warning':a.status==='Завършена'?'badge-success':'badge-neutral'}" style="margin-left:8px">${a.status}</span>
+        </div>
+        <div class="activity-desc">${a.desc}</div>
+        <div style="background:var(--bg3);height:6px;border-radius:3px;margin:10px 0;max-width:300px">
+          <div style="background:${statusColor[a.status]};height:6px;border-radius:3px;width:${a.progress}%;transition:width .5s"></div>
+        </div>
+        <div class="activity-meta">Начало: ${formatDate(a.start)} · Очакван Край: ${formatDate(a.end)} · ${a.progress}% завършено</div>
+        ${currentUser.role==='admin'?`<div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="editActivity('${a.id}')">✏ Редактирай</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteActivity('${a.id}')">🗑</button>
+        </div>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function saveActivity() {
+  const obj = {
+    title:document.getElementById('actTitleInput').value.trim(),
+    desc:document.getElementById('actDescInput').value.trim(),
+    status:document.getElementById('actStatusInput').value,
+    progress:parseInt(document.getElementById('actProgressInput').value)||0,
+    start:document.getElementById('actStartInput').value,
+    end:document.getElementById('actEndInput').value,
+  };
+  if(!obj.title) return alert('Попълнете заглавие');
+  const editId = document.getElementById('actTitleInput').dataset.editId;
+  if(editId) {
+    const a=DB.activities.find(x=>x.id===editId);
+    Object.assign(a,obj);
+    delete document.getElementById('actTitleInput').dataset.editId;
+  } else {
+    obj.id='a'+Date.now();
+    DB.activities.push(obj);
+  }
+  saveData(); closeModal('activityModal'); renderActivities(); renderDashboard();
+}
+
+function editActivity(id) {
+  const a=DB.activities.find(x=>x.id===id);
+  document.getElementById('actTitleInput').value=a.title;
+  document.getElementById('actTitleInput').dataset.editId=id;
+  document.getElementById('actDescInput').value=a.desc;
+  document.getElementById('actStatusInput').value=a.status;
+  document.getElementById('actProgressInput').value=a.progress;
+  document.getElementById('actStartInput').value=a.start;
+  document.getElementById('actEndInput').value=a.end;
+  openModal('activityModal');
+}
+
+function deleteActivity(id) {
+  if(!confirm('Изтрий?')) return;
+  DB.activities=DB.activities.filter(x=>x.id!==id);
+  saveData(); renderActivities(); renderDashboard();
+}
+
+// ==================== CALENDAR ====================
+function renderCalendar() {
+  const y=calendarDate.getFullYear(), m=calendarDate.getMonth();
+  const months=['Януари','Февруари','Март','Април','Май','Юни','Юли','Август','Септември','Октомври','Ноември','Декември'];
+  document.getElementById('calMonthLabel').textContent = months[m]+' '+y;
+
+  const firstDay = new Date(y,m,1);
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow===0?6:startDow-1; // Mon-based
+
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = new Date();
+
+  const grid = document.getElementById('calGrid');
+  // Remove all day cells (keep headers)
+  while(grid.children.length > 7) grid.removeChild(grid.lastChild);
+
+  // Leading empty
+  for(let i=0;i<startDow;i++){
+    const d=document.createElement('div');
+    d.className='cal-day other-month';
+    grid.appendChild(d);
+  }
+
+  const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===y && today.getMonth()===m && today.getDate()===day;
+    const dayEvents = DB.events.filter(e=>e.date===dateStr);
+    const d=document.createElement('div');
+    d.className='cal-day'+(isToday?' today':'');
+    d.innerHTML=`<div class="cal-day-num">${day}</div>`+dayEvents.map(e=>`<div class="cal-event" title="${e.desc}">${e.time} ${e.title}</div>`).join('');
+    grid.appendChild(d);
+  }
+
+  // Upcoming events
+  const upcoming = DB.events.filter(e=>e.date>=new Date().toISOString().slice(0,10)).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+  document.getElementById('upcomingEvents').innerHTML = upcoming.map(e=>`
+    <div style="display:flex;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="background:var(--bg3);padding:8px 12px;border-radius:2px;text-align:center;min-width:50px">
+        <div style="font-size:.7rem;color:var(--text3)">${formatDate(e.date).slice(3)}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--accent)">${e.date.slice(8)}</div>
+      </div>
+      <div>
+        <div style="font-weight:500">${e.title} <span style="color:var(--text3);font-size:.8rem">· ${e.time}</span></div>
+        <div style="font-size:.82rem;color:var(--text2)">${e.desc}</div>
+      </div>
+      ${currentUser&&currentUser.role==='admin'?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteEvent('${e.id}')">🗑</button>`:''}
+    </div>
+  `).join('') || '<div class="empty-state" style="padding:20px">Няма предстоящи събития</div>';
+}
+
+function changeMonth(d) {
+  calendarDate.setMonth(calendarDate.getMonth()+d);
+  renderCalendar();
+}
+
+function saveEvent() {
+  const obj={
+    id:'e'+Date.now(),
+    title:document.getElementById('evTitleInput').value.trim(),
+    desc:document.getElementById('evDescInput').value.trim(),
+    date:document.getElementById('evDateInput').value,
+    time:document.getElementById('evTimeInput').value||'—'
+  };
+  if(!obj.title||!obj.date) return alert('Попълнете заглавие и дата');
+  DB.events.push(obj);
+  saveData(); closeModal('eventModal'); renderCalendar();
+}
+
+function deleteEvent(id) {
+  if(!confirm('Изтрий събитие?')) return;
+  DB.events=DB.events.filter(x=>x.id!==id);
+  saveData(); renderCalendar();
+}
+
+// ==================== APARTMENTS ====================
+function switchAptTab(t) {
+  currentAptTab=t;
+  document.querySelectorAll('#page-apartments .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', ['all','apartments','extra','garages'][i]===t);
+  });
+  renderApartments();
+}
+
+function renderApartments() {
+  const q=(document.getElementById('aptSearch')||{}).value||'';
+  const thisMonth=new Date().toISOString().slice(0,7);
+
+  let units=DB.units;
+  if(currentAptTab==='apartments') units=units.filter(u=>u.type==='Апартамент');
+  else if(currentAptTab==='extra') units=units.filter(u=>u.type==='Стая');
+  else if(currentAptTab==='garages') units=units.filter(u=>u.type==='Гараж');
+  if(q) units=units.filter(u=>u.owner.toLowerCase().includes(q.toLowerCase())||u.num.includes(q));
+
+  const grid=document.getElementById('aptGrid');
+  grid.innerHTML=units.map(u=>{
+    const paid=DB.payments.filter(p=>p.unitId===u.id&&p.period===thisMonth).reduce((s,p)=>s+p.amount,0);
+    const isPaid=paid>=u.fee;
+    const icon=u.type==='Гараж'?'🚗':u.type==='Стая'?'🚪':'🏠';
+    return `<div class="apt-card" onclick="showAptDetail('${u.id}')">
+      <div class="apt-paid-dot" style="background:${isPaid?'var(--success)':'var(--danger)'}"></div>
+      <div class="apt-num">${icon} ${u.num}</div>
+      <div class="apt-name">${u.owner}</div>
+      <div class="apt-floor">${u.type} · Ет.${u.floor} · ${u.size}m²</div>
+      <div style="margin-top:8px;font-size:.78rem;color:${isPaid?'var(--success)':'var(--danger)'}">
+        ${isPaid?'✓ Платено':'○ Неплатено'} — ${paid}/${u.fee} лв.
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-state"><div class="empty-icon">🏢</div>Няма намерени единици</div>';
+}
+
+function showAptDetail(id) {
+  const u=DB.units.find(x=>x.id===id);
+  const payments=DB.payments.filter(p=>p.unitId===id).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('aptDetailTitle').textContent=(u.type==='Гараж'?'🚗':u.type==='Стая'?'🚪':'🏠')+' '+u.type+' '+u.num;
+  document.getElementById('aptDetailBody').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><div class="form-label">Собственик</div><div style="font-weight:500">${u.owner||'—'}</div></div>
+      <div><div class="form-label">Наемател</div><div>${u.tenant||'—'}</div></div>
+      <div><div class="form-label">Етаж</div><div>${u.floor}</div></div>
+      <div><div class="form-label">Площ</div><div>${u.size} m²</div></div>
+      <div><div class="form-label">Месечна Такса</div><div style="color:var(--accent);font-weight:600">${u.fee} лв.</div></div>
+      <div><div class="form-label">Телефон</div><div>${u.phone||'—'}</div></div>
+    </div>
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:10px">История на Плащанията</div>
+    <div class="table-container">
+    <table><thead><tr><th>Дата</th><th>Период</th><th>Сума</th><th>Бележка</th></tr></thead><tbody>
+    ${payments.map(p=>`<tr><td>${formatDate(p.date)}</td><td>${p.period}</td><td style="color:var(--success)">${p.amount} лв.</td><td>${p.note||'—'}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3)">Няма записи</td></tr>'}
+    </tbody></table></div>
+  `;
+  openModal('aptDetailModal');
+}
+
+// ==================== FINANCES ====================
+function switchFinTab(t) {
+  document.querySelectorAll('#page-finances .tab-btn').forEach((b,i)=>b.classList.toggle('active',['summary','paycal','history'][i]===t));
+  document.querySelectorAll('#page-finances .tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('finTab-'+t).classList.add('active');
+  if(t==='paycal') {
+    document.getElementById('payCalYearLabel').textContent = payCalYear;
+    renderPaymentCalendar();
+  }
+}
+
+function renderFinances() {
+  const thisMonth=new Date().toISOString().slice(0,7);
+  const totalFee=DB.units.reduce((s,u)=>s+u.fee,0);
+  const collected=DB.payments.filter(p=>p.period===thisMonth).reduce((s,p)=>s+p.amount,0);
+  const allCollected=DB.payments.reduce((s,p)=>s+p.amount,0);
+
+  const showAdmin = currentUser&&currentUser.role==='admin';
+
+  if(showAdmin) {
+    const allExpenses = DB.expenses.reduce((s,e)=>s+e.amount,0);
+    const bankTotal = (DB.bankBalance||0) + allCollected - allExpenses;
+    document.getElementById('finStats').innerHTML=`
+      <div class="stat-card"><div class="stat-label">Общо Месечни Такси</div><div class="stat-value">${totalFee} лв.</div></div>
+      <div class="stat-card"><div class="stat-label">Събрано Месец</div><div class="stat-value" style="color:var(--success)">${collected} лв.</div></div>
+      <div class="stat-card"><div class="stat-label">Неплатено</div><div class="stat-value" style="color:var(--danger)">${totalFee-collected} лв.</div></div>
+      <div class="stat-card"><div class="stat-label">Общо Събрано (Всички)</div><div class="stat-value">${allCollected} лв.</div></div>
+      <div class="stat-card" style="border-color:rgba(200,169,110,.4)"><div class="stat-label">💰 Баланс на Сградата</div><div class="stat-value" style="color:var(--accent2)">${bankTotal.toFixed(2)} лв.</div><div class="stat-sub">преходен ${(DB.bankBalance||0)} + събрани ${allCollected} − разходи ${allExpenses} лв.</div></div>
+    `;
+  } else {
+    const unit=DB.units.find(x=>x.id===currentUser.unitId);
+    if(unit){
+      const myPaid=DB.payments.filter(p=>p.unitId===unit.id&&p.period===thisMonth).reduce((s,p)=>s+p.amount,0);
+      document.getElementById('finStats').innerHTML=`
+        <div class="stat-card"><div class="stat-label">Моята Такса</div><div class="stat-value">${unit.fee} лв.</div></div>
+        <div class="stat-card"><div class="stat-label">Платено ${thisMonth}</div><div class="stat-value" style="color:${myPaid>=unit.fee?'var(--success)':'var(--warning)'}">${myPaid} лв.</div></div>
+        <div class="stat-card"><div class="stat-label">Общо Събрано (Сграда)</div><div class="stat-value">${collected} лв.</div><div class="stat-sub">за ${thisMonth}</div></div>
+      `;
+    }
+  }
+
+  // Summary table
+  const tbody=document.getElementById('finBody');
+  let units=showAdmin?DB.units:DB.units; // both see all (requirement: show name + amount)
+  tbody.innerHTML=units.map(u=>{
+    const paid=DB.payments.filter(p=>p.unitId===u.id&&p.period===thisMonth).reduce((s,p)=>s+p.amount,0);
+    const bal=paid-u.fee;
+    const isPaid=paid>=u.fee;
+    const isMe=u.id===currentUser.unitId;
+    return `<tr style="${isMe?'background:rgba(200,169,110,.06)':''}">
+      <td><strong>${u.type} ${u.num}</strong></td>
+      <td>${u.owner}</td>
+      <td>${u.fee} лв.</td>
+      <td>${paid} лв.</td>
+      <td style="color:${bal>=0?'var(--success)':'var(--danger)'}">${bal>=0?'+':''} ${bal} лв.</td>
+      <td><span class="badge ${isPaid?'badge-success':'badge-danger'}">${isPaid?'✓ Платено':'Неплатено'}</span></td>
+    </tr>`;
+  }).join('');
+
+  // History
+  const histBody=document.getElementById('finHistBody');
+  const payments = showAdmin ? DB.payments : DB.payments.filter(p=>p.unitId===currentUser.unitId);
+  const sorted = payments.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  histBody.innerHTML=sorted.map(p=>{
+    const u=DB.units.find(x=>x.id===p.unitId);
+    return `<tr><td>${formatDate(p.date)}</td><td>${u?u.type+' '+u.num:'—'}</td><td>${u?u.owner:'—'}</td><td style="color:var(--success)">${p.amount} лв.</td><td>${p.period}</td><td>${p.note||'—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3)">Няма записи</td></tr>';
+}
+
+function populatePaymentUnits() {
+  const sel=document.getElementById('payUnitInput');
+  sel.innerHTML=DB.units.map(u=>`<option value="${u.id}">${u.type} ${u.num} — ${u.owner}</option>`).join('');
+  const today=new Date().toISOString().slice(0,10);
+  const month=new Date().toISOString().slice(0,7);
+  document.getElementById('payDateInput').value=today;
+  document.getElementById('payPeriodInput').value=month;
+}
+
+function savePayment() {
+  const unitId=document.getElementById('payUnitInput').value;
+  const amount=parseFloat(document.getElementById('payAmountInput').value)||0;
+  const period=document.getElementById('payPeriodInput').value;
+  const date=document.getElementById('payDateInput').value;
+  const note=document.getElementById('payNoteInput').value;
+  if(!unitId||!amount||!period||!date) return alert('Попълнете всички задължителни полета');
+  DB.payments.push({id:'p'+Date.now(),unitId,amount,period,date,note});
+  saveData(); closeModal('paymentModal'); renderFinances(); renderDashboard(); renderApartments();
+}
+
+// ==================== DOCUMENTS ====================
+function renderDocuments() {
+  const list=document.getElementById('docList');
+  const icons={Правилник:'📋',Застраховка:'🛡',Договор:'📝',Протокол:'📄',Друго:'📁'};
+  list.innerHTML=DB.documents.map(d=>`
+    <div class="doc-item">
+      <div class="doc-icon">${icons[d.category]||'📁'}</div>
+      <div style="flex:1">
+        <div class="doc-name">${d.name}</div>
+        <div class="doc-meta">${d.category} · ${formatDate(d.date)} ${d.note?'· '+d.note:''}</div>
+      </div>
+      ${d.url&&d.url!=='#'?`<a href="${d.url}" target="_blank" class="btn btn-secondary btn-sm">↗ Отвори</a>`:'<span style="color:var(--text3);font-size:.78rem">Без линк</span>'}
+      ${currentUser&&currentUser.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteDoc('${d.id}')">🗑</button>`:''}
+    </div>
+  `).join('') || '<div class="empty-state"><div class="empty-icon">📁</div>Няма документи</div>';
+}
+
+function saveDoc() {
+  const obj={
+    id:'d'+Date.now(),
+    name:document.getElementById('docNameInput').value.trim(),
+    category:document.getElementById('docCatInput').value,
+    url:document.getElementById('docUrlInput').value.trim(),
+    note:document.getElementById('docNoteInput').value.trim(),
+    date:new Date().toISOString().slice(0,10)
+  };
+  if(!obj.name) return alert('Попълнете наименование');
+  DB.documents.push(obj);
+  saveData(); closeModal('docModal'); renderDocuments();
+}
+
+function deleteDoc(id) {
+  if(!confirm('Изтрий документ?')) return;
+  DB.documents=DB.documents.filter(x=>x.id!==id);
+  saveData(); renderDocuments();
+}
+
+// ==================== VOTES ====================
+function renderVotes() {
+  const list=document.getElementById('votesList');
+  list.innerHTML=DB.votes.map(v=>{
+    const totalVotes=Object.values(v.votes).reduce((s,x)=>s+x,0);
+    const myVote=v.votes[currentUser.username];
+    const expired=v.deadline<new Date().toISOString().slice(0,10);
+    return `<div class="vote-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="vote-title">${v.title}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${expired?'<span class="badge badge-neutral">Приключило</span>':'<span class="badge badge-info">Активно</span>'}
+          ${currentUser.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteVote('${v.id}')">🗑</button>`:''}
+        </div>
+      </div>
+      <div style="font-size:.75rem;color:var(--text3);margin-bottom:16px">Краен срок: ${formatDate(v.deadline)} · ${totalVotes} гласа</div>
+      ${v.options.map(opt=>{
+        const cnt=v.votes[opt]||0;
+        const pct=totalVotes?Math.round(cnt/totalVotes*100):0;
+        return `<div class="vote-option" onclick="${!myVote&&!expired?`castVote('${v.id}','${opt}')`:''}" style="${!myVote&&!expired?'cursor:pointer':'cursor:default'}">
+          <div class="vote-label">${opt} ${myVote===opt?'✓':''}</div>
+          <div class="vote-bar-container"><div class="vote-bar" style="width:${pct}%"></div></div>
+          <div class="vote-pct">${pct}%</div>
+          <div style="font-size:.78rem;color:var(--text3);width:24px">${cnt}</div>
+        </div>`;
+      }).join('')}
+      ${!myVote&&!expired?'<div style="font-size:.78rem;color:var(--text3);margin-top:8px">Кликнете за да гласувате</div>':''}
+      ${myVote?`<div style="font-size:.78rem;color:var(--success);margin-top:8px">✓ Гласували сте за: ${myVote}</div>`:''}
+    </div>`;
+  }).join('') || '<div class="empty-state"><div class="empty-icon">🗳️</div>Няма активни анкети</div>';
+}
+
+function castVote(voteId, opt) {
+  const v=DB.votes.find(x=>x.id===voteId);
+  if(!v||v.votes[currentUser.username]) return;
+  if(!v.votes[opt]) v.votes[opt]=0;
+  v.votes[opt]++;
+  v.votes[currentUser.username]=opt; // track who voted what
+  saveData(); renderVotes();
+}
+
+function saveVote() {
+  const title=document.getElementById('voteTitleInput').value.trim();
+  const optLines=document.getElementById('voteOptionsInput').value.trim().split('\n').filter(x=>x.trim());
+  const deadline=document.getElementById('voteDeadlineInput').value;
+  if(!title||optLines.length<2||!deadline) return alert('Попълнете въпрос, минимум 2 опции и краен срок');
+  DB.votes.push({id:'v'+Date.now(),title,options:optLines,votes:{},deadline});
+  saveData(); closeModal('voteModal'); renderVotes();
+}
+
+function deleteVote(id) {
+  if(!confirm('Изтрий анкетата?')) return;
+  DB.votes=DB.votes.filter(x=>x.id!==id);
+  saveData(); renderVotes();
+}
+
+// ==================== SUBMISSIONS ====================
+function submitIssue() {
+  const unit=DB.units.find(x=>x.id===currentUser.unitId);
+  const obj={
+    id:'s'+Date.now(),
+    unitId:currentUser.unitId,
+    unit:unit?unit.type+' '+unit.num:'Администратор',
+    category:document.getElementById('subCat').value,
+    subject:document.getElementById('subSubject').value.trim(),
+    body:document.getElementById('subBody').value.trim(),
+    date:new Date().toISOString().slice(0,10),
+    status:'Нов', reply:''
+  };
+  if(!obj.subject||!obj.body) return alert('Попълнете тема и описание');
+  DB.submissions.push(obj);
+  saveData();
+  document.getElementById('subSubject').value='';
+  document.getElementById('subBody').value='';
+  const s=document.getElementById('subSuccess');
+  s.style.display='block';
+  setTimeout(()=>s.style.display='none',3000);
+  renderMySubmissions();
+}
+
+function renderMySubmissions() {
+  const list=document.getElementById('mySubmissions');
+  const mine=DB.submissions.filter(s=>s.unitId===currentUser.unitId).sort((a,b)=>b.date.localeCompare(a.date));
+  list.innerHTML=mine.map(s=>`
+    <div class="submission-card">
+      <div class="submission-header">
+        <span class="badge ${s.status==='Нов'?'badge-info':s.status==='В процес'?'badge-warning':'badge-success'}">${s.status}</span>
+        <span class="badge badge-neutral">${s.category}</span>
+      </div>
+      <div class="submission-subject">${s.subject}</div>
+      <div class="submission-meta">${formatDate(s.date)}</div>
+      <div class="submission-body">${s.body}</div>
+      ${s.reply?`<div class="submission-reply"><strong style="color:var(--accent)">Отговор от Администратора:</strong><br>${s.reply}</div>`:''}
+    </div>
+  `).join('') || '<div class="empty-state" style="padding:24px">Няма подадени сигнали</div>';
+}
+
+function renderSubmissions() {
+  renderMySubmissions();
+  renderAdminSubmissions();
+}
+
+function filterSubmissions(status) {
+  renderAdminSubmissions(status);
+}
+
+function renderAdminSubmissions(filter='') {
+  const list=document.getElementById('adminSubmissionsList');
+  if(!list) return;
+  let subs=DB.submissions.sort((a,b)=>b.date.localeCompare(a.date));
+  if(filter) subs=subs.filter(s=>s.status===filter);
+  list.innerHTML=subs.map(s=>`
+    <div class="submission-card">
+      <div class="submission-header">
+        <strong>${s.unit}</strong>
+        <span class="badge ${s.status==='Нов'?'badge-info':s.status==='В процес'?'badge-warning':'badge-success'}">${s.status}</span>
+        <span class="badge badge-neutral">${s.category}</span>
+      </div>
+      <div class="submission-subject">${s.subject}</div>
+      <div class="submission-meta">${formatDate(s.date)}</div>
+      <div class="submission-body">${s.body}</div>
+      ${s.reply?`<div class="submission-reply"><strong style="color:var(--accent)">Отговор:</strong> ${s.reply}</div>`:''}
+      <div style="margin-top:10px">
+        <button class="btn btn-secondary btn-sm" onclick="openReply('${s.id}')">✏ Отговори / Смени Статус</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSubmission('${s.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('') || '<div class="empty-state"><div class="empty-icon">📬</div>Няма сигнали</div>';
+}
+
+function openReply(id) {
+  const s=DB.submissions.find(x=>x.id===id);
+  document.getElementById('replySubId').value=id;
+  document.getElementById('replySubInfo').innerHTML=`<strong>${s.unit}</strong> · ${s.category}<br>${s.subject}`;
+  document.getElementById('replyStatus').value=s.status;
+  document.getElementById('replyText').value=s.reply||'';
+  openModal('replyModal');
+}
+
+function saveReply() {
+  const id=document.getElementById('replySubId').value;
+  const s=DB.submissions.find(x=>x.id===id);
+  s.status=document.getElementById('replyStatus').value;
+  s.reply=document.getElementById('replyText').value;
+  saveData(); closeModal('replyModal'); renderAdminSubmissions(document.getElementById('subFilter').value);
+}
+
+function deleteSubmission(id) {
+  if(!confirm('Изтрий сигнала?')) return;
+  DB.submissions=DB.submissions.filter(x=>x.id!==id);
+  saveData(); renderAdminSubmissions();
+}
+
+// ==================== ADMIN PANEL ====================
+function renderAdminUnits() {
+  const tbody=document.getElementById('adminUnitsBody');
+  tbody.innerHTML=DB.units.map(u=>`<tr>
+    <td><strong>${u.num}</strong></td>
+    <td>${u.type}</td>
+    <td>${u.floor}</td>
+    <td>${u.size}</td>
+    <td>${u.owner}</td>
+    <td>${u.tenant||'—'}</td>
+    <td>${u.fee} лв.</td>
+    <td style="font-size:.78rem;color:var(--text3)">${u.username}</td>
+    <td><button class="btn btn-secondary btn-sm" onclick="editUnit('${u.id}')">✏</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteUnit('${u.id}')">🗑</button></td>
+  </tr>`).join('');
+
+  const tbody2=document.getElementById('adminUsersBody');
+  tbody2.innerHTML=[
+    {username:DB.adminUser.username, role:'Администратор', unit:'—'},
+    ...DB.units.map(u=>({username:u.username, role:'Обитател', unit:u.type+' '+u.num}))
+  ].map(u=>`<tr>
+    <td>${u.username}</td>
+    <td><span class="badge ${u.role==='Администратор'?'badge-info':'badge-neutral'}">${u.role}</span></td>
+    <td>${u.unit}</td>
+    <td style="color:var(--text3)">—</td>
+    <td></td>
+  </tr>`).join('');
+}
+
+function editUnit(id) {
+  const u=DB.units.find(x=>x.id===id);
+  document.getElementById('unitEditId').value=id;
+  document.getElementById('unitNumInput').value=u.num;
+  document.getElementById('unitTypeInput').value=u.type;
+  document.getElementById('unitFloorInput').value=u.floor;
+  document.getElementById('unitSizeInput').value=u.size;
+  document.getElementById('unitOwnerInput').value=u.owner;
+  document.getElementById('unitTenantInput').value=u.tenant||'';
+  document.getElementById('unitPhoneInput').value=u.phone||'';
+  document.getElementById('unitFeeInput').value=u.fee;
+  document.getElementById('unitUserInput').value=u.username;
+  document.getElementById('unitPassInput').value='';
+  openModal('unitModal');
+}
+
+function saveUnit() {
+  const id=document.getElementById('unitEditId').value;
+  const obj={
+    num:document.getElementById('unitNumInput').value.trim(),
+    type:document.getElementById('unitTypeInput').value,
+    floor:parseInt(document.getElementById('unitFloorInput').value)||0,
+    size:parseInt(document.getElementById('unitSizeInput').value)||0,
+    owner:document.getElementById('unitOwnerInput').value.trim(),
+    tenant:document.getElementById('unitTenantInput').value.trim(),
+    phone:document.getElementById('unitPhoneInput').value.trim(),
+    fee:parseFloat(document.getElementById('unitFeeInput').value)||0,
+    username:document.getElementById('unitUserInput').value.trim(),
+  };
+  const pass=document.getElementById('unitPassInput').value;
+  if(!obj.num||!obj.owner||!obj.username) return alert('Попълнете задължителните полета');
+
+  if(id) {
+    const u=DB.units.find(x=>x.id===id);
+    Object.assign(u,obj);
+    if(pass) u.password=pass;
+  } else {
+    obj.id='unit'+Date.now();
+    obj.password=pass||'pass123';
+    DB.units.push(obj);
+  }
+  document.getElementById('unitEditId').value='';
+  saveData(); closeModal('unitModal'); renderAdminUnits(); renderApartments(); renderFinances();
+}
+
+function deleteUnit(id) {
+  if(!confirm('Изтрий тази единица? Всички плащания ще останат.')) return;
+  DB.units=DB.units.filter(x=>x.id!==id);
+  saveData(); renderAdminUnits(); renderApartments();
+}
+
+// ==================== ANNOUNCEMENT ====================
+function saveAnnouncement() {
+  DB.announcement=document.getElementById('annInput').value.trim();
+  saveData();
+  if(DB.announcement) {
+    document.getElementById('annText').textContent=DB.announcement;
+    document.getElementById('announcementBanner').style.display='block';
+  } else {
+    document.getElementById('announcementBanner').style.display='none';
+  }
+  alert('Банерът е запазен!');
+}
+
+function clearAnnouncement() {
+  DB.announcement='';
+  document.getElementById('annInput').value='';
+  document.getElementById('announcementBanner').style.display='none';
+  saveData();
+}
+
+// ==================== EXPORT / IMPORT ====================
+function exportData() {
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='popova13_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+
+function importData(input) {
+  const file=input.files[0];
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=function(e){
+    try {
+      const d=JSON.parse(e.target.result);
+      if(!d.units||!d.payments) throw new Error('Invalid');
+      DB=d;
+      saveData();
+      alert('Данните са импортирани успешно! Презаредете страницата.');
+    } catch(err) {
+      alert('Невалиден файл!');
+    }
+  };
+  r.readAsText(file);
+}
+
+// ==================== UTILS ====================
+function switchAdminTab(t) {
+  document.querySelectorAll('#page-admin .tab-btn').forEach((b,i)=>b.classList.toggle('active',['units','users','balance','announcement','export'][i]===t));
+  document.querySelectorAll('#page-admin .tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('adminTab-'+t).classList.add('active');
+  if(t==='units') renderAdminUnits();
+  if(t==='balance') renderBalanceTab();
+}
+
+function formatDate(str) {
+  if(!str) return '—';
+  try {
+    const d=new Date(str+'T12:00:00');
+    return d.toLocaleDateString('bg-BG',{day:'2-digit',month:'2-digit',year:'numeric'});
+  } catch(e){ return str; }
+}
+
+// Auto-submit on Enter for login
+document.getElementById('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('loginUser').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+
+// ==================== CHANGE PASSWORD ====================
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if(id==='paymentModal') populatePaymentUnits();
+  if(id==='changePassModal') {
+    cpReset();
+    const who = currentUser.role==='admin' ? 'Администратор' : currentUser.displayName;
+    document.getElementById('changePassWho').textContent = 'Акаунт: ' + who + ' (' + currentUser.username + ')';
+  }
+  if(id==='expenseModal') {
+    document.getElementById('expDate').value = new Date().toISOString().slice(0,10);
+  }
+}
+
+function cpReset() {
+  ['cpOld','cpNew','cpConfirm'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const e=document.getElementById('cpError'); if(e) e.style.display='none';
+  const s=document.getElementById('cpSuccess'); if(s) s.style.display='none';
+}
+
+function doChangePassword() {
+  const old=document.getElementById('cpOld').value;
+  const nw=document.getElementById('cpNew').value;
+  const conf=document.getElementById('cpConfirm').value;
+  const errEl=document.getElementById('cpError');
+  const okEl=document.getElementById('cpSuccess');
+  errEl.style.display='none'; okEl.style.display='none';
+
+  const showErr=(msg)=>{ errEl.textContent=msg; errEl.style.display='block'; };
+
+  if(!old||!nw||!conf) return showErr('Попълнете всички полета.');
+  if(nw.length<4) return showErr('Новата парола трябва да е поне 4 символа.');
+  if(nw!==conf) return showErr('Новата парола и потвърждението не съвпадат.');
+
+  if(currentUser.role==='admin') {
+    if(old!==DB.adminUser.password) return showErr('Текущата парола е грешна.');
+    DB.adminUser.password=nw;
+  } else {
+    const unit=DB.units.find(x=>x.id===currentUser.unitId);
+    if(!unit) return showErr('Грешка — потребителят не е намерен.');
+    if(old!==unit.password) return showErr('Текущата парола е грешна.');
+    unit.password=nw;
+  }
+  saveData();
+  okEl.style.display='block';
+  ['cpOld','cpNew','cpConfirm'].forEach(id=>document.getElementById(id).value='');
+  setTimeout(()=>{ closeModal('changePassModal'); cpReset(); }, 1800);
+}
+
+// ==================== PAYMENT CALENDAR ====================
+let payCalYear = new Date().getFullYear();
+let payCalContext = null; // {unitId, period}
+
+function changePayCalYear(d) {
+  payCalYear += d;
+  document.getElementById('payCalYearLabel').textContent = payCalYear;
+  renderPaymentCalendar();
+}
+
+function renderPaymentCalendar() {
+  const table = document.getElementById('payCalTable');
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const months = ['Яну','Фев','Мар','Апр','Май','Юни','Юли','Авг','Сеп','Окт','Ное','Дек'];
+  const now = new Date();
+  const currentPeriod = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  // Which units to show
+  let units = DB.units;
+
+  let html = '<thead><tr>';
+  html += '<th style="text-align:left;padding:9px 12px;position:sticky;left:0;background:var(--bg3);z-index:2">Единица / Собственик</th>';
+  for(let m=1;m<=12;m++) {
+    const period = `${payCalYear}-${String(m).padStart(2,'0')}`;
+    const isCurrentMonth = period === currentPeriod;
+    html += `<th style="text-align:center;${isCurrentMonth?'color:var(--accent)':''}">${months[m-1]}</th>`;
+  }
+  html += '<th style="text-align:center">Общо</th>';
+  html += '</tr></thead><tbody>';
+
+  let colTotals = new Array(12).fill(0);
+  let grandTotal = 0;
+
+  for(const u of units) {
+    html += '<tr>';
+    html += `<td class="paycal-unit-cell">
+      <div>${u.type === 'Гараж' ? '🚗' : u.type === 'Стая' ? '🚪' : '🏠'} <strong>${u.type} ${u.num}</strong></div>
+      <div class="paycal-unit-type">${u.owner}</div>
+    </td>`;
+
+    let rowTotal = 0;
+    for(let m=1;m<=12;m++) {
+      const period = `${payCalYear}-${String(m).padStart(2,'0')}`;
+      const isFuture = period > currentPeriod;
+      const paid = DB.payments.filter(p=>p.unitId===u.id && p.period===period).reduce((s,p)=>s+p.amount,0);
+      const fee = u.fee;
+      rowTotal += paid;
+      colTotals[m-1] += paid;
+
+      let cls, label;
+      if(isFuture) { cls='future'; label='—'; }
+      else if(paid===0) { cls='unpaid'; label='✗'; }
+      else if(paid>=fee) { cls='paid'; label=paid+'лв'; }
+      else { cls='partial'; label=paid+'лв'; }
+
+      const clickable = isAdmin && !isFuture;
+      html += `<td class="paycal-cell ${cls}" 
+        title="${u.type} ${u.num} · ${period} · ${paid} лв. / ${fee} лв."
+        ${clickable ? `onclick="openPaymentCell('${u.id}','${period}')"` : ''}>
+        ${label}
+      </td>`;
+    }
+
+    grandTotal += rowTotal;
+    html += `<td style="text-align:center;font-size:.78rem;font-weight:600;color:var(--accent);padding:0 8px">${rowTotal} лв.</td>`;
+    html += '</tr>';
+  }
+
+  // Totals row
+  html += '<tr class="paycal-totals">';
+  html += '<td class="paycal-unit-cell" style="background:var(--bg3)"><strong>Общо Събрано</strong></td>';
+  for(let m=0;m<12;m++) {
+    html += `<td style="text-align:center;padding:10px 4px;color:var(--accent)">${colTotals[m]>0?colTotals[m]+'лв':'—'}</td>`;
+  }
+  html += `<td style="text-align:center;color:var(--accent2);font-size:.9rem">${grandTotal} лв.</td>`;
+  html += '</tr>';
+
+  html += '</tbody>';
+  table.innerHTML = html;
+
+  const hint = document.getElementById('payCalAdminHint');
+  if(hint) hint.textContent = isAdmin ? '💡 Кликнете върху клетка за да добавите или прегледате плащания за съответния месец.' : '';
+}
+
+function openPaymentCell(unitId, period) {
+  const u = DB.units.find(x=>x.id===unitId);
+  if(!u) return;
+  payCalContext = {unitId, period};
+
+  document.getElementById('paymentCellTitle').textContent = `${u.type} ${u.num} — ${period}`;
+  document.getElementById('paymentCellInfo').innerHTML =
+    `<strong>${u.owner}</strong> &nbsp;·&nbsp; Такса: ${u.fee} лв./мес. &nbsp;·&nbsp; Период: ${period}`;
+
+  // Show existing payments for this cell
+  const existing = DB.payments.filter(p=>p.unitId===unitId && p.period===period);
+  const paidTotal = existing.reduce((s,p)=>s+p.amount,0);
+  const existEl = document.getElementById('paymentCellExisting');
+  if(existing.length) {
+    existEl.innerHTML = `
+      <div style="font-family:'Playfair Display',serif;font-size:.9rem;margin-bottom:8px">
+        Записани Плащания <span style="color:var(--success)">(${paidTotal} лв. общо)</span>
+      </div>
+      ${existing.map(p=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+          <span style="color:var(--success);font-weight:600">${p.amount} лв.</span>
+          <span style="color:var(--text3)">${formatDate(p.date)}</span>
+          <span style="color:var(--text2);flex:1">${p.note||''}</span>
+          <button class="btn btn-danger btn-sm" onclick="deletePaymentCell('${p.id}')">🗑</button>
+        </div>
+      `).join('')}
+    `;
+  } else {
+    existEl.innerHTML = `<div style="color:var(--text3);font-size:.85rem;margin-bottom:8px">Няма записани плащания за този месец.</div>`;
+  }
+
+  // Prefill amount with fee
+  document.getElementById('pcAmount').value = u.fee;
+  document.getElementById('pcDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pcNote').value = '';
+  openModal('paymentCellModal');
+}
+
+function savePaymentCell() {
+  if(!payCalContext) return;
+  const amount = parseFloat(document.getElementById('pcAmount').value)||0;
+  const date = document.getElementById('pcDate').value;
+  const note = document.getElementById('pcNote').value;
+  if(!amount||!date) return alert('Попълнете сума и дата');
+
+  DB.payments.push({
+    id:'p'+Date.now(),
+    unitId:payCalContext.unitId,
+    amount,
+    period:payCalContext.period,
+    date,
+    note
+  });
+  saveData();
+  // Refresh cell modal in place
+  openPaymentCell(payCalContext.unitId, payCalContext.period);
+  renderPaymentCalendar();
+  renderFinances();
+  renderDashboard();
+  renderApartments();
+}
+
+function deletePaymentCell(payId) {
+  if(!confirm('Изтрий това плащане?')) return;
+  DB.payments = DB.payments.filter(x=>x.id!==payId);
+  saveData();
+  openPaymentCell(payCalContext.unitId, payCalContext.period);
+  renderPaymentCalendar();
+  renderFinances();
+  renderDashboard();
+  renderApartments();
+}
+
+// ==================== BANK BALANCE & EXPENSES ====================
+function renderBalanceTab() {
+  document.getElementById('bankBalInput').value = DB.bankBalance || 0;
+  document.getElementById('bankBalOk').style.display = 'none';
+
+  const allCollected = DB.payments.reduce((s,p)=>s+p.amount, 0);
+  const allExpenses  = (DB.expenses||[]).reduce((s,e)=>s+e.amount, 0);
+  const bankTotal    = (DB.bankBalance||0) + allCollected - allExpenses;
+
+  document.getElementById('balanceSummary').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:0;font-size:.875rem">
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)">Преходен / Начален Баланс</span>
+        <span style="font-weight:600">${(DB.bankBalance||0).toFixed(2)} лв.</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)">+ Общо Събрани Такси</span>
+        <span style="font-weight:600;color:var(--success)">+ ${allCollected.toFixed(2)} лв.</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)">− Общо Разходи</span>
+        <span style="font-weight:600;color:var(--danger)">− ${allExpenses.toFixed(2)} лв.</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:14px 0;margin-top:2px">
+        <span style="font-weight:700;color:var(--accent)">💰 Текущ Баланс</span>
+        <span style="font-weight:700;font-size:1.15rem;color:${bankTotal>=0?'var(--accent2)':'var(--danger)'}">
+          ${bankTotal.toFixed(2)} лв.
+        </span>
+      </div>
+    </div>
+  `;
+
+  const list = document.getElementById('expenseList');
+  const catIcon = {Ремонт:'🔧',Почистване:'🧹',Асансьор:'🛗','Ел. Консумация':'⚡',Водоснабдяване:'💧',Застраховка:'🛡',Административни:'📋',Друго:'📦'};
+  const sorted = (DB.expenses||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  list.innerHTML = sorted.map(e=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)">
+      <span style="font-size:1.1rem">${catIcon[e.category]||'📦'}</span>
+      <div style="flex:1">
+        <div style="font-size:.85rem;font-weight:500">${e.note||e.category}</div>
+        <div style="font-size:.72rem;color:var(--text3)">${e.category} · ${formatDate(e.date)}</div>
+      </div>
+      <span style="color:var(--danger);font-weight:600;font-size:.9rem">−${e.amount.toFixed(2)} лв.</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">🗑</button>
+    </div>
+  `).join('') || '<div class="empty-state" style="padding:24px">Няма записани разходи</div>';
+}
+
+function saveBankBalance() {
+  const val = parseFloat(document.getElementById('bankBalInput').value) || 0;
+  DB.bankBalance = val;
+  saveData();
+  const ok = document.getElementById('bankBalOk');
+  ok.style.display = 'block';
+  setTimeout(()=>ok.style.display='none', 2000);
+  renderBalanceTab();
+  renderDashboard();
+  renderFinances();
+}
+
+function saveExpense() {
+  const amount = parseFloat(document.getElementById('expAmount').value)||0;
+  const date   = document.getElementById('expDate').value;
+  const cat    = document.getElementById('expCat').value;
+  const note   = document.getElementById('expNote').value.trim();
+  if(!amount||!date) return alert('Попълнете сума и дата');
+  if(!DB.expenses) DB.expenses=[];
+  DB.expenses.push({id:'exp'+Date.now(), amount, date, category:cat, note});
+  saveData();
+  closeModal('expenseModal');
+  renderBalanceTab();
+  renderDashboard();
+  renderFinances();
+  document.getElementById('expAmount').value='';
+  document.getElementById('expNote').value='';
+}
+
+function deleteExpense(id) {
+  if(!confirm('Изтрий този разход?')) return;
+  DB.expenses = (DB.expenses||[]).filter(x=>x.id!==id);
+  saveData();
+  renderBalanceTab();
+  renderDashboard();
+  renderFinances();
+}
+</script>
+</body>
+</html>

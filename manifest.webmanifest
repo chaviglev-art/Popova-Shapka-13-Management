@@ -1,0 +1,9 @@
+{
+  "name": "Попова шапка 13 — Portal",
+  "short_name": "PS13",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#16213a",
+  "theme_color": "#16213a",
+  "icons": [{ "src": "assets/logo.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
