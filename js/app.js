@@ -220,7 +220,7 @@ function renderLogin() {
   const langToggle = `<div class="segmented"><button class="${LANG === 'bg' ? 'active' : ''}" onclick="setLang('bg');render()">BG</button><button class="${LANG === 'en' ? 'active' : ''}" onclick="setLang('en');render()">EN</button></div><button class="btn btn-secondary btn-icon" onclick="toggleTheme()">${icon(dark ? 'sun' : 'moon')}</button>`;
   return `<div id="login">
     <section class="login-hero">
-      <img class="bg" src="assets/building.svg" alt="">
+      <img class="bg" src="assets/building.jpg" alt="">
       <div class="brand"><img src="assets/logo.svg" alt=""><div><b>${esc(DB.building.name)}</b></div></div>
       <div>
         <div class="kicker">${t('city')}</div>
