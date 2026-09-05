@@ -351,18 +351,23 @@ function openCreateLoginModal(unitId) {
   const u = DB.units.find(x => x.id === unitId);
   openModal({ title: t('create_login') + ' — ' + unitLabel(u), body: `
     <div class="field"><label>${t('email')}</label><input class="input" id="clEmail" autocapitalize="off"></div>
-    <div class="field"><label>${t('password')}</label><div class="row"><input class="input" id="clPass" value="${randomPassword(8)}"><button class="btn btn-secondary btn-sm" onclick="$('#clPass').value=randomPassword(8)">${icon('key')}</button></div></div>
+    <label class="check" style="margin-bottom:14px"><input type="checkbox" id="clInvite" checked onchange="$('#clPwBlock').hidden=this.checked">${t('send_invite_email')}</label>
+    <div class="help" id="clInviteHint" style="margin:-10px 0 14px">${t('send_invite_hint')}</div>
+    <div class="field" id="clPwBlock" hidden><label>${t('password')}</label><div class="row"><input class="input" id="clPass" value="${randomPassword(8)}"><button class="btn btn-secondary btn-sm" onclick="$('#clPass').value=randomPassword(8)">${icon('key')}</button></div></div>
     <div class="error" id="clErr" hidden></div>`,
     footer: `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button><button class="btn btn-primary" id="clSave">${t('save')}</button>`,
     onOpen: ov => $('#clSave', ov).onclick = async () => {
-      const email = $('#clEmail').value.trim(), password = $('#clPass').value; const err = $('#clErr');
+      const email = $('#clEmail').value.trim(); const invite = $('#clInvite').checked; const err = $('#clErr');
       const fail = m => { err.textContent = m; err.hidden = false; };
-      if (!email || !password) return fail(t('required'));
+      if (!email) return fail(t('required'));
+      if (!invite && !$('#clPass').value) return fail(t('required'));
       $('#clSave').disabled = true;
-      const res = await callManageLogin({ action: 'create', unitId, email, password, displayName: u.owner });
+      const res = invite
+        ? await callManageLogin({ action: 'invite', unitId, email, displayName: u.owner, redirectTo: location.origin + location.pathname })
+        : await callManageLogin({ action: 'create', unitId, email, password: $('#clPass').value, displayName: u.owner });
       $('#clSave').disabled = false;
       if (res.error) return fail(res.error);
-      audit('login_created', unitLabel(u)); await loadRemoteData(); closeModal(); toast(t('saved')); render();
+      audit('login_created', unitLabel(u)); await loadRemoteData(); closeModal(); toast(invite ? t('invite_sent') : t('saved')); render();
     }
   });
 }

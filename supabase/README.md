@@ -48,7 +48,33 @@ supabase functions deploy manage-login
 ```
 
 Once deployed, admin → Units → open any unit → **Access** section → **Create
-login** works end to end from the app.
+login** works end to end from the app — with "Send an email invite" checked
+(the default), it emails the resident a link to set their own password;
+unchecked, it falls back to the old "set a password yourself" flow.
+
+## Making the invite email actually arrive
+
+Two things to configure in the Supabase dashboard, both one-time, under
+**Authentication**:
+
+1. **URL Configuration → Site URL**: set this to your live site,
+   `https://chaviglev-art.github.io/Popova-Shapka-13-Management/` — this is
+   the link the invite email points residents to. Also add it under
+   **Redirect URLs** on the same page.
+2. **Email sending**: Supabase's built-in email sender works for a handful of
+   emails but is explicitly meant only for testing — it's rate-limited and
+   not guaranteed to arrive for real use. For actual residents to reliably
+   get their invite, add your own SMTP under **Authentication → Emails →
+   SMTP Settings**. Free options with a generous enough allowance for a
+   ~23-unit building: [Resend](https://resend.com) (100/day free) or
+   [Brevo](https://www.brevo.com) (300/day free) both work in a few minutes —
+   sign up, verify a sender address, paste their SMTP host/port/user/pass in.
+   Gmail SMTP also works for this volume if you'd rather use the address
+   already on this account.
+
+Optional polish: **Authentication → Email Templates → Invite user** lets you
+customize the subject/body residents see (uses `{{ .ConfirmationURL }}` for
+the link).
 
 ## Creating a login by hand (fallback, or for the admin account itself)
 

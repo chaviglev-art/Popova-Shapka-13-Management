@@ -122,6 +122,8 @@ const I18N = {
     fees_since: 'Fees charged since', fees_since_hint: 'Balances are calculated from this month. Leave empty to start from the earliest recorded payment.',
     unit_login_hint: 'This only creates the unit record. Once saved, open the unit to create its owner’s login.',
     login_access_note: 'Create, reset or remove a resident’s login from that unit’s page (Units → open a unit → Access).',
+    send_invite_email: 'Send an email invite', send_invite_hint: 'They get a link to set their own password. Uncheck to set one yourself instead.',
+    invite_sent: 'Invite email sent.', set_password_title: 'Set your password', set_password_hint: 'Welcome! Choose a password to finish setting up your account.',
     login_active: 'Login active', no_login: 'No login yet', create_login: 'Create login', remove_login: 'Remove access',
     remove_login_confirm: 'Remove this login? The owner will no longer be able to sign in.',
   },
@@ -231,6 +233,8 @@ const I18N = {
     fees_since: 'Такси се начисляват от', fees_since_hint: 'Балансите се изчисляват от този месец. Оставете празно, за да започне от най-ранното записано плащане.',
     unit_login_hint: 'Това само създава обекта. След запис отворете обекта, за да създадете достъп за собственика.',
     login_access_note: 'Създайте, сменете или премахнете достъпа на собственик от страницата на обекта (Обекти → отворете обект → Достъп).',
+    send_invite_email: 'Изпрати покана по имейл', send_invite_hint: 'Собственикът получава линк да си зададе парола сам. Размаркирайте, за да зададете парола вие.',
+    invite_sent: 'Поканата е изпратена по имейл.', set_password_title: 'Задайте парола', set_password_hint: 'Добре дошли! Изберете парола, за да завършите настройката на акаунта си.',
     login_active: 'Достъпът е активен', no_login: 'Няма достъп', create_login: 'Създай достъп', remove_login: 'Премахни достъпа',
     remove_login_confirm: 'Да се премахне ли този достъп? Собственикът вече няма да може да влиза.',
   }

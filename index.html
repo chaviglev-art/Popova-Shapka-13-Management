@@ -18,6 +18,12 @@
 <body>
 <div id="root"><div class="boot-loading"><img src="assets/logo.svg" alt=""><p>Loading…</p></div></div>
 <div class="toast-wrap" id="toasts"></div>
+<script>
+  // Capture the invite/recovery link's "type" before supabase-js parses and clears
+  // the URL hash, so app.js can tell "just landed here via an emailed invite/reset
+  // link" apart from a normal return visit with a restored session.
+  window.__authHashType = new URLSearchParams((location.hash || '').replace(/^#/, '')).get('type');
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js"></script>
 <script src="js/supabaseClient.js"></script>
 <script src="js/i18n.js"></script>

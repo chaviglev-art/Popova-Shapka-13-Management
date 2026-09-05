@@ -56,6 +56,18 @@ Deno.serve(async (req) => {
       return json({ userId: created.user.id });
     }
 
+    // Creates the login AND emails the resident a link to set their own password
+    // (Supabase's built-in "invite" flow) — no password for the admin to relay at all.
+    if (action === 'invite') {
+      const { unitId, email, displayName, redirectTo } = body;
+      if (!unitId || !email) return json({ error: 'Missing fields' }, 400);
+      const { data: created, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+      if (inviteErr) return json({ error: inviteErr.message }, 400);
+      const { error: profErr } = await admin.from('profiles').upsert({ id: created.user.id, unit_id: unitId, is_admin: false, display_name: displayName || null });
+      if (profErr) { await admin.auth.admin.deleteUser(created.user.id); return json({ error: profErr.message }, 400); }
+      return json({ userId: created.user.id, invited: true });
+    }
+
     if (action === 'reset_password') {
       const { userId, password } = body;
       if (!userId || !password) return json({ error: 'Missing fields' }, 400);

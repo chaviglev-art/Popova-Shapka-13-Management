@@ -69,26 +69,28 @@ function toast(msg, type = 'ok') {
 }
 
 /* ---------- modal ---------- */
-function openModal({ title, body, footer = '', wide = false, onOpen }) {
+let MODAL_DISMISSABLE = true; // false while a modal that must be completed (e.g. "set your password") is open
+function openModal({ title, body, footer = '', wide = false, onOpen, dismissable = true }) {
   closeModal();
+  MODAL_DISMISSABLE = dismissable;
   const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'modal';
-  ov.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true"><div class="modal-head"><h2>${title}</h2><button class="btn btn-ghost btn-icon right" onclick="closeModal()" aria-label="${t('close')}">${icon('x')}</button></div><div class="modal-body">${body}</div>${footer ? `<div class="modal-foot">${footer}</div>` : ''}</div>`;
+  ov.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true"><div class="modal-head"><h2>${title}</h2>${dismissable ? `<button class="btn btn-ghost btn-icon right" onclick="closeModal()" aria-label="${t('close')}">${icon('x')}</button>` : ''}</div><div class="modal-body">${body}</div>${footer ? `<div class="modal-foot">${footer}</div>` : ''}</div>`;
   // Close only when the whole click (press AND release) happens on the backdrop.
   // A plain 'click' check on its own also fires when someone drags to select text
   // inside a field and the drag overshoots past the field's edge onto the backdrop —
   // that's a text selection, not a request to close the modal.
   let downOnBackdrop = false;
   ov.addEventListener('mousedown', e => { downOnBackdrop = (e.target === ov); });
-  ov.addEventListener('click', e => { if (e.target === ov && downOnBackdrop) closeModal(); });
+  ov.addEventListener('click', e => { if (e.target === ov && downOnBackdrop && MODAL_DISMISSABLE) closeModal(); });
   document.body.appendChild(ov); document.body.style.overflow = 'hidden';
   const first = ov.querySelector('input,textarea,select'); if (first) setTimeout(() => first.focus(), 50);
   if (onOpen) onOpen(ov);
 }
-function closeModal() { const m = $('#modal'); if (m) m.remove(); document.body.style.overflow = ''; }
+function closeModal() { const m = $('#modal'); if (m) m.remove(); document.body.style.overflow = ''; MODAL_DISMISSABLE = true; }
 function confirmDialog(msg, onYes) {
   openModal({ title: t('confirm_delete').split('?')[0] + '?', body: `<p>${esc(msg || t('confirm_delete'))}</p>`, footer: `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button><button class="btn btn-danger" id="confirmYes">${t('delete')}</button>`, onOpen: ov => $('#confirmYes', ov).onclick = () => { closeModal(); onYes(); } });
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); ui.notifOpen = false; } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && MODAL_DISMISSABLE) { closeModal(); ui.notifOpen = false; } });
 
 /* ---------- auth (Supabase Auth — email + password, real server-side verification) ---------- */
 function isAdmin() { return currentUser && currentUser.role === 'admin'; }
@@ -253,11 +255,13 @@ function togglePw(id, btn) { const i = $('#' + id); i.type = i.type === 'passwor
    Forgotten passwords are reset by the building manager from the Supabase
    dashboard (see supabase/README.md), same as creating a login in the first
    place — there is no self-service recovery code any more. */
-function openChangePassword() {
-  openModal({ title: t('change_password'), body: `
+function openChangePassword(opts = {}) {
+  const forced = !!opts.forced;
+  openModal({ title: forced ? t('set_password_title') : t('change_password'), dismissable: !forced, body: `
+    ${forced ? `<div class="banner">${icon('shield')}<div>${t('set_password_hint')}</div></div>` : ''}
     <div class="field"><label>${t('new_password')}</label><input class="input" type="password" id="cpNew"></div>
     <div class="field"><label>${t('confirm_password')}</label><input class="input" type="password" id="cpConf"></div><div class="error" id="cpErr" hidden></div>`,
-    footer: `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button><button class="btn btn-primary" id="cpSave">${t('save')}</button>`,
+    footer: `${forced ? '' : `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button>`}<button class="btn btn-primary" id="cpSave">${t('save')}</button>`,
     onOpen: ov => { $('#cpSave', ov).onclick = async () => {
       const nw = $('#cpNew').value, cf = $('#cpConf').value, err = $('#cpErr');
       const fail = m => { err.textContent = m; err.hidden = false; };
@@ -265,6 +269,7 @@ function openChangePassword() {
       const { error } = await sb.auth.updateUser({ password: nw });
       if (error) return fail(error.message);
       audit('password_changed'); saveData(); closeModal(); toast(t('pw_changed'));
+      if (forced) { route = 'home'; render(); }
     }; }
   });
 }
@@ -274,7 +279,10 @@ function copyText(s) { navigator.clipboard && navigator.clipboard.writeText(s).t
 async function boot() {
   applyTheme(); setLang(LANG);
   await fetchPublicBuildingName();   // so the login screen shows the real building name
-  await restoreSession();            // resumes a previous Supabase session, if any
+  const signedIn = await restoreSession(); // resumes a previous session, or one from an invite/reset link in the URL
   render();
+  // Landed here via an emailed invite or password-reset link — they have a session
+  // but no password yet (invite) or want a new one (reset). Force that before anything else.
+  if (signedIn && (window.__authHashType === 'invite' || window.__authHashType === 'recovery')) openChangePassword({ forced: true });
 }
 boot();
