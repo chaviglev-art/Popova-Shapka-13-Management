@@ -120,8 +120,10 @@ const I18N = {
     demo_creds: 'Demo access', install_hint: 'Tip: add this page to your phone home screen for an app-like experience.',
     show_password: 'Show', hide_password: 'Hide', welcome_admin_pw: 'Temporary admin password',
     fees_since: 'Fees charged since', fees_since_hint: 'Balances are calculated from this month. Leave empty to start from the earliest recorded payment.',
-    unit_login_hint: 'This only creates the unit record. To give the owner a login, create their account in the Supabase dashboard (see supabase/README.md).',
-    login_access_note: 'Logins are managed in the Supabase dashboard, not here — see supabase/README.md.',
+    unit_login_hint: 'This only creates the unit record. Once saved, open the unit to create its owner’s login.',
+    login_access_note: 'Create, reset or remove a resident’s login from that unit’s page (Units → open a unit → Access).',
+    login_active: 'Login active', no_login: 'No login yet', create_login: 'Create login', remove_login: 'Remove access',
+    remove_login_confirm: 'Remove this login? The owner will no longer be able to sign in.',
   },
 
   bg: {
@@ -227,8 +229,10 @@ const I18N = {
     demo_creds: 'Демо достъп', install_hint: 'Съвет: добавете страницата на началния екран на телефона си за усещане като приложение.',
     show_password: 'Покажи', hide_password: 'Скрий', welcome_admin_pw: 'Временна админ парола',
     fees_since: 'Такси се начисляват от', fees_since_hint: 'Балансите се изчисляват от този месец. Оставете празно, за да започне от най-ранното записано плащане.',
-    unit_login_hint: 'Това само създава обекта. За да дадете достъп на собственика, създайте акаунта му от Supabase (вижте supabase/README.md).',
-    login_access_note: 'Достъпите се управляват от Supabase, не оттук — вижте supabase/README.md.',
+    unit_login_hint: 'Това само създава обекта. След запис отворете обекта, за да създадете достъп за собственика.',
+    login_access_note: 'Създайте, сменете или премахнете достъпа на собственик от страницата на обекта (Обекти → отворете обект → Достъп).',
+    login_active: 'Достъпът е активен', no_login: 'Няма достъп', create_login: 'Създай достъп', remove_login: 'Премахни достъпа',
+    remove_login_confirm: 'Да се премахне ли този достъп? Собственикът вече няма да може да влиза.',
   }
 };
 

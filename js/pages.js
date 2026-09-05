@@ -308,11 +308,64 @@ PAGES.units = () => {
 };
 function openUnitDetail(id) {
   const u = DB.units.find(x => x.id === id); const pays = DB.payments.filter(p => p.unitId === id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10); const bal = unitBalance(id); const reqs = DB.requests.filter(r => r.unitId === id).length;
+  const login = loginForUnit(id);
   openModal({ title: `${unitLabel(u)} — ${esc(u.owner)}`, wide: true, body: `<div class="kpis" style="grid-template-columns:repeat(3,1fr)">${kpi('wallet', bal < 0 ? 'red' : 'green', t('balance'), `<span style="color:${bal < 0 ? 'var(--bad)' : 'var(--good)'}">${fmtMoney(bal, { noDual: true })}</span>`)}${kpi('home', 'blue', t('monthly_fee'), fmtMoney(u.fee, { noDual: true }))}${kpi('inbox', 'amber', t('nav_requests'), reqs)}</div>
     <div class="grid-2" style="margin-bottom:14px"><div><div class="label">${t('tenant')}</div>${esc(u.tenant) || '—'}</div><div><div class="label">${t('phone')}</div>${u.phone ? `<a href="tel:${esc(u.phone)}">${esc(u.phone)}</a>` : '—'}</div><div><div class="label">${t('email')}</div>${esc(u.email) || '—'}</div></div>
+    <div class="label">${t('access')}</div><div class="card" style="box-shadow:none;margin-bottom:16px"><div class="card-body row wrap" style="align-items:center;gap:10px">
+      ${login ? `<span class="badge b-good">${icon('check')}${t('login_active')}</span><span class="grow"></span><button class="btn btn-secondary btn-sm" onclick="openResetLoginModal('${id}','${login.id}')">${icon('key')}${t('reset_password')}</button><button class="btn btn-ghost btn-sm" onclick="removeLogin('${id}','${login.id}')">${icon('trash')}${t('remove_login')}</button>`
+        : `<span class="badge b-warn">${icon('alert')}${t('no_login')}</span><span class="grow"></span><button class="btn btn-primary btn-sm" onclick="openCreateLoginModal('${id}')">${icon('plus')}${t('create_login')}</button>`}
+    </div></div>
     <div class="label">${new Date().getFullYear()}</div>${Charts.strip(id, new Date().getFullYear())}
     <div class="label" style="margin-top:16px">${t('payment_history')}</div><div class="card" style="box-shadow:none"><div class="list">${pays.map(p => `<div class="list-item"><b>${fmtPeriod(p.period)}</b><span class="small muted grow">${fmtDate(p.date)} ${esc(p.note)}</span><b style="color:var(--good)">${fmtMoney(p.amount, { noDual: true })}</b></div>`).join('') || empty('wallet')}</div></div>`,
     footer: `<button class="btn btn-danger btn-sm" onclick="confirmDialog('',()=>{DB.units=DB.units.filter(x=>x.id!=='${id}');audit('unit_deleted','${esc(u.num)}');saveData();closeModal();render()})">${icon('trash')}</button><span class="grow"></span><button class="btn btn-secondary" onclick="openPaymentModal('${id}','${monthISO()}')">${icon('plus')}${t('record_payment')}</button><button class="btn btn-primary" onclick="openUnitModal('${id}')">${icon('edit')}${t('edit')}</button>` });
+}
+/* ---------- login access (create/reset/remove) — calls the manage-login Edge Function,
+   the only place that's allowed to touch Supabase Auth users. ---------- */
+async function callManageLogin(body) {
+  const { data, error } = await sb.functions.invoke('manage-login', { body });
+  if (error) { let msg = error.message; try { msg = (await error.context.json()).error || msg; } catch (e) { } return { error: msg }; }
+  if (data && data.error) return { error: data.error };
+  return { data };
+}
+function openCreateLoginModal(unitId) {
+  const u = DB.units.find(x => x.id === unitId);
+  openModal({ title: t('create_login') + ' — ' + unitLabel(u), body: `
+    <div class="field"><label>${t('email')}</label><input class="input" id="clEmail" autocapitalize="off"></div>
+    <div class="field"><label>${t('password')}</label><div class="row"><input class="input" id="clPass" value="${randomPassword(8)}"><button class="btn btn-secondary btn-sm" onclick="$('#clPass').value=randomPassword(8)">${icon('key')}</button></div></div>
+    <div class="error" id="clErr" hidden></div>`,
+    footer: `<button class="btn btn-secondary" onclick="closeModal()">${t('cancel')}</button><button class="btn btn-primary" id="clSave">${t('save')}</button>`,
+    onOpen: ov => $('#clSave', ov).onclick = async () => {
+      const email = $('#clEmail').value.trim(), password = $('#clPass').value; const err = $('#clErr');
+      const fail = m => { err.textContent = m; err.hidden = false; };
+      if (!email || !password) return fail(t('required'));
+      $('#clSave').disabled = true;
+      const res = await callManageLogin({ action: 'create', unitId, email, password, displayName: u.owner });
+      $('#clSave').disabled = false;
+      if (res.error) return fail(res.error);
+      audit('login_created', unitLabel(u)); await loadRemoteData(); closeModal(); toast(t('saved')); render();
+    }
+  });
+}
+function openResetLoginModal(unitId, userId) {
+  const u = DB.units.find(x => x.id === unitId); const pw = randomPassword(8);
+  openModal({ title: t('reset_password') + ' — ' + unitLabel(u), body: `<p class="muted" style="margin-bottom:12px">${t('give_to_owner')}</p><div class="label">${t('new_password_is')}</div><div class="code" id="rlPw">${pw}</div><div class="error" id="rlErr" hidden></div>`,
+    footer: `<button class="btn btn-secondary" onclick="copyText('${pw}')">${icon('copy')}${t('copy')}</button><button class="btn btn-primary" id="rlSave">${t('save')}</button>`,
+    onOpen: ov => $('#rlSave', ov).onclick = async () => {
+      $('#rlSave').disabled = true;
+      const res = await callManageLogin({ action: 'reset_password', userId, password: pw });
+      $('#rlSave').disabled = false;
+      if (res.error) { const e = $('#rlErr'); e.textContent = res.error; e.hidden = false; return; }
+      audit('password_reset', unitLabel(u)); closeModal(); toast(t('pw_changed')); render();
+    }
+  });
+}
+function removeLogin(unitId, userId) {
+  const u = DB.units.find(x => x.id === unitId);
+  confirmDialog(t('remove_login_confirm'), async () => {
+    const res = await callManageLogin({ action: 'remove', userId });
+    if (res.error) { toast(res.error, 'err'); return; }
+    audit('login_removed', unitLabel(u)); await loadRemoteData(); toast(t('saved')); render();
+  });
 }
 function openUnitModal(id) {
   const u = id ? DB.units.find(x => x.id === id) : { num: '', type: 'apartment', floor: 1, size: '', owner: '', tenant: '', phone: '', email: '', fee: DB.building.defaultFee || 40 };

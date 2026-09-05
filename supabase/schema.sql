@@ -52,6 +52,11 @@ create table if not exists units (
   fee numeric default 0,
   fee_since text default ''
 );
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_unit_fk') then
+    alter table profiles add constraint profiles_unit_fk foreign key (unit_id) references units(id) on delete set null;
+  end if;
+end $$;
 
 -- ---------- payments ----------
 create table if not exists payments (

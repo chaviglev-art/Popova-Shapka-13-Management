@@ -4,6 +4,12 @@
 const BGN_PER_EUR = 1.95583;
 
 function uid(prefix = 'x') { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function randomPassword(len = 8) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let out = ''; const arr = new Uint32Array(len); crypto.getRandomValues(arr);
+  for (let i = 0; i < len; i++) out += chars[arr[i] % chars.length];
+  return out;
+}
 function todayISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function monthISO(d = new Date()) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 
@@ -11,9 +17,10 @@ function monthISO(d = new Date()) { return d.getFullYear() + '-' + String(d.getM
 function emptyData() {
   return {
     building: { name: '', address: '', managerName: '', managerPhone: '', managerEmail: '', currency: 'EUR', showDual: true, defaultFee: 40, iban: '', bank: '', beneficiary: '', openingBalance: 0, feesSince: '', banner: '' },
-    units: [], payments: [], expenses: [], news: [], works: [], events: [], requests: [], documents: [], votes: [], contacts: [], audit: [],
+    units: [], payments: [], expenses: [], news: [], works: [], events: [], requests: [], documents: [], votes: [], contacts: [], audit: [], profiles: [],
   };
 }
+function loginForUnit(unitId) { return DB.profiles.find(p => p.unitId === unitId) || null; }
 let DB = emptyData();
 let DB_SNAPSHOT = null;   // last state known to be persisted — saveData() diffs against this
 
@@ -39,7 +46,7 @@ async function fetchPublicBuildingName() {
   try { const { data } = await sb.rpc('public_building_info'); if (data && data[0]) Object.assign(DB.building, { name: data[0].name, address: data[0].address }); } catch (e) { }
 }
 async function loadRemoteData() {
-  const [b, u, p, ex, nw, wk, ev, rq, rc, doc, vo, ba, ct, au] = await Promise.all([
+  const [b, u, p, ex, nw, wk, ev, rq, rc, doc, vo, ba, ct, au, pr] = await Promise.all([
     sb.from('building').select('*').eq('id', 1).single(),
     sb.from('units').select('*').order('num'),
     sb.from('payments').select('*'),
@@ -54,9 +61,13 @@ async function loadRemoteData() {
     sb.from('ballots').select('*'),
     sb.from('contacts').select('*'),
     sb.from('audit').select('*').order('date', { ascending: false }).limit(300),
+    sb.from('profiles').select('id,unit_id,is_admin,display_name'),
   ]);
   const firstError = [b, u, p, ex, nw, wk, ev, rq, rc, doc, vo, ba, ct, au].find(r => r.error);
   if (firstError) { console.warn('load failed', firstError.error); return false; }
+  // profiles: admin sees everyone (used to show login status per unit); a resident only
+  // sees their own row (RLS) — harmless, this is never shown to residents.
+  DB.profiles = (pr.data || []).map(r => ({ id: r.id, unitId: r.unit_id, isAdmin: r.is_admin, displayName: r.display_name }));
   if (b.data) Object.assign(DB.building, rowToJs(b.data, TABLE_MAPS.building));
   DB.units = (u.data || []).map(r => rowToJs(r, TABLE_MAPS.units));
   DB.payments = (p.data || []).map(r => rowToJs(r, TABLE_MAPS.payments));
