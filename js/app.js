@@ -73,7 +73,13 @@ function openModal({ title, body, footer = '', wide = false, onOpen }) {
   closeModal();
   const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'modal';
   ov.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true"><div class="modal-head"><h2>${title}</h2><button class="btn btn-ghost btn-icon right" onclick="closeModal()" aria-label="${t('close')}">${icon('x')}</button></div><div class="modal-body">${body}</div>${footer ? `<div class="modal-foot">${footer}</div>` : ''}</div>`;
-  ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
+  // Close only when the whole click (press AND release) happens on the backdrop.
+  // A plain 'click' check on its own also fires when someone drags to select text
+  // inside a field and the drag overshoots past the field's edge onto the backdrop —
+  // that's a text selection, not a request to close the modal.
+  let downOnBackdrop = false;
+  ov.addEventListener('mousedown', e => { downOnBackdrop = (e.target === ov); });
+  ov.addEventListener('click', e => { if (e.target === ov && downOnBackdrop) closeModal(); });
   document.body.appendChild(ov); document.body.style.overflow = 'hidden';
   const first = ov.querySelector('input,textarea,select'); if (first) setTimeout(() => first.focus(), 50);
   if (onOpen) onOpen(ov);
