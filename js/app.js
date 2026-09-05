@@ -217,23 +217,32 @@ function render() {
 /* ---------- login page ---------- */
 function renderLogin() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const langToggle = `<div class="segmented"><button class="${LANG === 'bg' ? 'active' : ''}" onclick="setLang('bg');render()">BG</button><button class="${LANG === 'en' ? 'active' : ''}" onclick="setLang('en');render()">EN</button></div><button class="btn btn-secondary btn-icon" onclick="toggleTheme()">${icon(dark ? 'sun' : 'moon')}</button>`;
   return `<div id="login">
-    <div class="login-topbar"><div class="segmented"><button class="${LANG === 'bg' ? 'active' : ''}" onclick="setLang('bg');render()">BG</button><button class="${LANG === 'en' ? 'active' : ''}" onclick="setLang('en');render()">EN</button></div><button class="btn btn-secondary btn-icon" onclick="toggleTheme()">${icon(dark ? 'sun' : 'moon')}</button></div>
     <section class="login-hero">
       <img class="bg" src="assets/building.svg" alt="">
-      <div class="brand"><img src="assets/logo.svg" alt=""><div><b style="font-size:1.05rem">${esc(DB.building.name)}</b><div class="small" style="opacity:.75">${t('city')}</div></div></div>
-      <div><h1>${t('login_tagline')}</h1><p style="opacity:.8;max-width:420px">${t('app_sub')}</p>
-        <div class="feats"><span>${icon('check')}${t('login_feat1')}</span><span>${icon('check')}${t('login_feat2')}</span><span>${icon('check')}${t('login_feat3')}</span></div></div>
+      <div class="brand"><img src="assets/logo.svg" alt=""><div><b>${esc(DB.building.name)}</b></div></div>
+      <div>
+        <div class="kicker">${t('city')}</div>
+        <h1>${t('login_tagline')}</h1>
+        <p class="tagline">${t('app_sub')}</p>
+        <div class="feats"><span>${icon('check')}${t('login_feat1')}</span><span>${icon('check')}${t('login_feat2')}</span><span>${icon('check')}${t('login_feat3')}</span></div>
+      </div>
     </section>
-    <section class="login-form"><div class="login-card">
-      <h2>${t('welcome_back')}</h2><p class="muted" style="margin-bottom:22px">${t('login_hint')}</p>
-      <div class="field"><label>${t('username')}</label><input class="input" id="loginUser" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doLogin()"></div>
-      <div class="field"><label>${t('password')}</label><div class="pw-wrap"><input class="input" id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button class="pw-toggle" type="button" onclick="togglePw('loginPass',this)">${t('show_password')}</button></div></div>
-      <div class="error" id="loginErr" hidden>${t('login_error')}</div>
-      <button class="btn btn-primary btn-block" id="loginBtn" style="margin-top:8px;padding:12px" onclick="doLogin()">${t('login')}</button>
-      <div style="text-align:center;margin-top:14px"><a href="#" onclick="toast(t('forgot_hint'));return false" class="small">${t('forgot')}</a></div>
-      <p class="tiny subtle" style="margin-top:18px">${t('install_hint')}</p>
-    </div></section>
+    <section class="login-form">
+      <div class="login-card">
+        <div class="login-topbar">${langToggle}</div>
+        <div class="surface">
+          <h2>${t('welcome_back')}</h2><p class="lead">${t('login_hint')}</p>
+          <div class="field"><label>${t('username')}</label><input class="input" id="loginUser" autocomplete="username" autocapitalize="off" onkeydown="if(event.key==='Enter')doLogin()"></div>
+          <div class="field"><label>${t('password')}</label><div class="pw-wrap"><input class="input" id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button class="pw-toggle" type="button" onclick="togglePw('loginPass',this)">${t('show_password')}</button></div></div>
+          <div class="error" id="loginErr" hidden>${t('login_error')}</div>
+          <button class="btn btn-primary btn-block" id="loginBtn" style="margin-top:8px;padding:12px" onclick="doLogin()">${t('login')}</button>
+          <div class="login-footer-links"><a href="#" onclick="toast(t('forgot_hint'));return false">${t('forgot')}</a></div>
+        </div>
+        <p class="tiny subtle" style="text-align:center;margin-top:16px">${t('install_hint')}</p>
+      </div>
+    </section>
   </div>`;
 }
 function togglePw(id, btn) { const i = $('#' + id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? t('show_password') : t('hide_password'); }

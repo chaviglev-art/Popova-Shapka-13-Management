@@ -81,21 +81,34 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
 .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 
 /* ---------- login ---------- */
-#login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
-.login-hero { position: relative; background: var(--ink); color: var(--cream); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 40px 48px; }
-.login-hero img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .85; }
-.login-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(22,33,58,.05) 30%, rgba(22,33,58,.9)); }
-.login-hero > * { position: relative; z-index: 1; }
-.login-hero .brand { display: flex; align-items: center; gap: 14px; } .login-hero .brand img { width: 52px; height: 52px; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
-.login-hero h1 { font-family: var(--display); font-size: 2.6rem; font-weight: 600; line-height: 1.1; margin-bottom: 12px; }
-.login-hero .feats { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
-.login-hero .feats span { display: flex; align-items: center; gap: 10px; font-size: .95rem; opacity: .9; } .login-hero .feats svg { width: 20px; height: 20px; color: var(--brass-2); }
-.login-form { display: flex; align-items: center; justify-content: center; padding: 40px 24px; background: var(--bg); }
-.login-card { width: 100%; max-width: 400px; }
-.login-card h2 { font-size: 1.6rem; margin-bottom: 4px; }
-.login-topbar { position: absolute; top: 16px; right: 16px; display: flex; gap: 8px; z-index: 2; }
+#login { min-height: 100vh; display: grid; grid-template-columns: 1.15fr 1fr; background: var(--bg); }
+.login-hero { position: relative; background: var(--ink); color: var(--cream); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 48px; }
+.login-hero img.bg { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 22%; }
+.login-hero::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(18,23,42,.2) 0%, rgba(17,21,39,.3) 26%, rgba(15,19,35,.72) 46%, rgba(11,14,26,.94) 66%, rgba(9,11,21,.99) 82%, #0b0e17 100%); }
+.login-hero::after { content: ''; position: absolute; top: 24px; left: 24px; right: 24px; bottom: 24px; z-index: 2; border: 1px solid rgba(246,241,232,.16); border-radius: 20px; pointer-events: none; }
+.login-hero > * { position: relative; z-index: 3; }
+.login-hero .brand { position: absolute; top: 40px; left: 48px; display: flex; align-items: center; gap: 14px; }
+.login-hero .brand img { width: 46px; height: 46px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.login-hero .brand b { font-family: var(--display); letter-spacing: .01em; text-shadow: 0 2px 10px rgba(0,0,0,.5); }
+.login-hero .kicker { display: inline-flex; align-items: center; gap: 8px; font-size: .74rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--brass-2); margin-bottom: 14px; }
+.login-hero .kicker::before { content: ''; width: 22px; height: 1px; background: var(--brass-2); }
+.login-hero h1 { font-family: var(--display); font-size: 2.5rem; font-weight: 600; line-height: 1.14; margin-bottom: 14px; max-width: 480px; text-wrap: balance; }
+.login-hero p.tagline { max-width: 400px; opacity: .82; line-height: 1.55; }
+.login-hero .feats { display: flex; flex-direction: column; gap: 11px; margin: 22px 0 8px; }
+.login-hero .feats span { display: flex; align-items: center; gap: 10px; font-size: .92rem; opacity: .92; }
+.login-hero .feats svg { width: 18px; height: 18px; color: var(--brass-2); flex: none; }
+.login-form { display: flex; align-items: center; justify-content: center; padding: 40px 32px; background: radial-gradient(ellipse 900px 700px at 85% 15%, var(--primary-soft) 0%, transparent 60%), var(--bg); }
+.login-card { width: 100%; max-width: 388px; animation: login-in .5s cubic-bezier(.2,.7,.2,1); }
+.login-card .surface { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 34px 32px; }
+.login-card h2 { font-family: var(--display); font-size: 1.7rem; font-weight: 600; margin-bottom: 6px; }
+.login-card .lead { color: var(--text-2); font-size: .9rem; margin-bottom: 26px; line-height: 1.5; }
+.login-card .field { margin-bottom: 16px; }
+.login-card .input { padding: 11px 13px; font-size: .96rem; }
+.login-topbar { display: flex; width: 100%; justify-content: flex-end; gap: 8px; margin-bottom: 18px; }
+.login-footer-links { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 18px; font-size: .84rem; }
 .demo-box { margin-top: 24px; padding: 12px 14px; border: 1px dashed var(--border-2); border-radius: 10px; font-size: .8rem; color: var(--text-2); }
 .demo-box code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; color: var(--text); }
+@keyframes login-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---------- app shell ---------- */
 #app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
@@ -226,7 +239,8 @@ tr.me td { background: var(--primary-soft); }
   .two-col, .three-col { grid-template-columns: 1fr; }
 }
 @media (max-width: 860px) {
-  #login { grid-template-columns: 1fr; } .login-hero { min-height: 260px; padding: 28px 22px; } .login-hero h1 { font-size: 1.9rem; } .login-hero .feats { display: none; } .login-hero img.bg { opacity: .35; }
+  #login { grid-template-columns: 1fr; } .login-hero { min-height: 300px; padding: 28px 22px; } .login-hero .brand { top: 24px; left: 22px; } .login-hero h1 { font-size: 1.7rem; } .login-hero p.tagline { display: none; } .login-hero .feats { display: none; } .login-hero img.bg { object-position: center 30%; }
+  .login-form { background: var(--bg); padding: 32px 20px 40px; } .login-card .surface { padding: 26px 22px; box-shadow: none; }
   #app { grid-template-columns: 1fr; }
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: min(300px, 86vw); z-index: 120; transform: translateX(-104%); transition: transform .22s ease; box-shadow: var(--shadow-lg); }
   .sidebar.open { transform: none; } .scrim { position: fixed; inset: 0; background: rgba(10,14,28,.5); z-index: 110; }
