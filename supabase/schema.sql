@@ -90,7 +90,7 @@ create table if not exists news (
 create table if not exists works (
   id text primary key,
   title text not null,
-  desc text default '',
+  description text default '',
   status text default 'planned',  -- planned | in_progress | done
   progress int default 0,
   start_date date,
@@ -101,7 +101,7 @@ create table if not exists works (
 create table if not exists events (
   id text primary key,
   title text not null,
-  desc text default '',
+  description text default '',
   date date not null,
   time text default '',
   type text default 'other',
